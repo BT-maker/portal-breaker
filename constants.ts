@@ -10,7 +10,7 @@ export const PORTAL_RADIUS = 25;
 
 export const INITIAL_LIVES = 3;
 
-// Skins Palette
+// Skins Palette (Fallback colors if images not found)
 export const SKINS = {
   PADDLE: {
     DEFAULT: '#3b82f6', // Blue
@@ -28,6 +28,25 @@ export const SKINS = {
     TOXIC: '#84cc16', // Lime
     GHOST: '#94a3b8', // Slate
   }
+};
+
+// Image paths for skins
+export const PADDLE_IMAGES: Record<string, string> = {
+  default: '/assets/paddles/default.png',
+  crimson: '/assets/paddles/crimson.png',
+  neon: '/assets/paddles/neon.png',
+  gold: '/assets/paddles/gold.png',
+  ice: '/assets/paddles/ice.png',
+  void: '/assets/paddles/void.png',
+};
+
+export const BALL_IMAGES: Record<string, string> = {
+  default: '/assets/balls/default.png',
+  fire: '/assets/balls/fire.png',
+  plasma: '/assets/balls/plasma.png',
+  ice: '/assets/balls/ice.png',
+  toxic: '/assets/balls/toxic.png',
+  ghost: '/assets/balls/ghost.png',
 };
 
 export const SHOP_ITEMS: ShopItem[] = [

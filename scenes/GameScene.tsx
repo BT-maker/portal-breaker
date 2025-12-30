@@ -3,7 +3,7 @@ import { Scene, SaveData, LevelData, Vector2, Portal, Block, Particle, BallEntit
 import { generateLevel } from '../utils/levelGenerator.ts';
 import { Button } from '../components/Button';
 import { audioManager } from '../utils/audio';
-import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, PORTAL_RADIUS, SKINS } from '../constants';
+import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, PORTAL_RADIUS, SKINS, PADDLE_IMAGES, BALL_IMAGES } from '../constants';
 
 interface GameSceneProps {
   levelNum: number;
@@ -15,6 +15,15 @@ interface GameSceneProps {
 export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGameOver, onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>();
+  
+  // Image cache for skins
+  const imageCacheRef = useRef<{
+    paddles: Map<string, HTMLImageElement | null>;
+    balls: Map<string, HTMLImageElement | null>;
+  }>({
+    paddles: new Map(),
+    balls: new Map(),
+  });
   
   // Game State Refs
   const gameStateRef = useRef({
@@ -66,6 +75,59 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     if (skinId === 'default' || !skinKey) return SKINS.PADDLE.DEFAULT;
     return SKINS.PADDLE[skinKey as keyof typeof SKINS.PADDLE];
   };
+
+  // Helper to get paddle image
+  const getPaddleImage = (): HTMLImageElement | null => {
+    const skinId = saveData.equipped.paddleSkin;
+    let imageKey = 'default';
+    
+    if (skinId.includes('crimson')) imageKey = 'crimson';
+    else if (skinId.includes('neon')) imageKey = 'neon';
+    else if (skinId.includes('gold')) imageKey = 'gold';
+    else if (skinId.includes('ice')) imageKey = 'ice';
+    else if (skinId.includes('void')) imageKey = 'void';
+    
+    return imageCacheRef.current.paddles.get(imageKey) || null;
+  };
+
+  // Helper to get ball image
+  const getBallImage = (): HTMLImageElement | null => {
+    const skinId = saveData.equipped.ballSkin;
+    let imageKey = 'default';
+    
+    if (skinId.includes('fire')) imageKey = 'fire';
+    else if (skinId.includes('plasma')) imageKey = 'plasma';
+    else if (skinId.includes('ice')) imageKey = 'ice';
+    else if (skinId.includes('toxic')) imageKey = 'toxic';
+    else if (skinId.includes('ghost')) imageKey = 'ghost';
+    
+    return imageCacheRef.current.balls.get(imageKey) || null;
+  };
+
+  // Load images on mount
+  useEffect(() => {
+    const loadImage = (path: string, cache: Map<string, HTMLImageElement | null>, key: string) => {
+      const img = new Image();
+      img.onload = () => {
+        cache.set(key, img);
+      };
+      img.onerror = () => {
+        // Image not found, use fallback (null)
+        cache.set(key, null);
+      };
+      img.src = path;
+    };
+
+    // Load paddle images
+    Object.entries(PADDLE_IMAGES).forEach(([key, path]) => {
+      loadImage(path, imageCacheRef.current.paddles, key);
+    });
+
+    // Load ball images
+    Object.entries(BALL_IMAGES).forEach(([key, path]) => {
+      loadImage(path, imageCacheRef.current.balls, key);
+    });
+  }, []);
 
   // Init Level
   useEffect(() => {
@@ -1014,9 +1076,11 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const pX = state.paddleX - (pWidth - state.paddleWidth) / 2;
     const pY = (GAME_HEIGHT - 30) + (PADDLE_HEIGHT - pHeight);
 
-    ctx.fillStyle = getPaddleColor(); 
+    const paddleImage = getPaddleImage();
+    const paddleColor = getPaddleColor();
+    
     ctx.shadowBlur = 15;
-    ctx.shadowColor = getPaddleColor();
+    ctx.shadowColor = paddleColor;
     
     // Draw Guns for ALL skins
     // Gun Color matches paddle but darker or metallic
@@ -1025,37 +1089,93 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     ctx.fillRect(pX - 4, pY - 8, 8, pHeight + 8);
     // Right Gun
     ctx.fillRect(pX + pWidth - 4, pY - 8, 8, pHeight + 8);
-    // Reset color for main body
-    ctx.fillStyle = getPaddleColor(); 
     
-    // Paddle Body
-    ctx.beginPath();
-    if (ctx.roundRect) {
-        ctx.roundRect(pX, pY, pWidth, pHeight, pHeight / 2);
+    // Draw Paddle Body - Use image if available, otherwise fallback to color
+    if (paddleImage && paddleImage.complete && paddleImage.naturalWidth > 0) {
+      // Draw image with optimized scaling
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.globalAlpha = 1.0;
+      
+      // Calculate aspect ratio and scale to fit properly
+      const imgAspect = paddleImage.naturalWidth / paddleImage.naturalHeight;
+      const targetAspect = pWidth / pHeight;
+      
+      let drawWidth = pWidth;
+      let drawHeight = pHeight;
+      let drawX = pX;
+      let drawY = pY;
+      
+      // Maintain aspect ratio while filling the paddle area
+      if (imgAspect > targetAspect) {
+        // Image is wider, fit to height
+        drawHeight = pHeight;
+        drawWidth = drawHeight * imgAspect;
+        drawX = pX + (pWidth - drawWidth) / 2;
+      } else {
+        // Image is taller, fit to width
+        drawWidth = pWidth;
+        drawHeight = drawWidth / imgAspect;
+        drawY = pY + (pHeight - drawHeight) / 2;
+      }
+      
+      // Scale up for better quality (2x for crisp rendering)
+      const scale = 2.0;
+      const scaledWidth = drawWidth * scale;
+      const scaledHeight = drawHeight * scale;
+      const scaledX = drawX - (scaledWidth - drawWidth) / 2;
+      const scaledY = drawY - (scaledHeight - drawHeight) / 2;
+      
+      ctx.drawImage(
+        paddleImage,
+        scaledX,
+        scaledY,
+        scaledWidth,
+        scaledHeight
+      );
+      
+      // Flash effect overlay
+      if (pEffect > 0.1) {
+        ctx.globalAlpha = pEffect * 0.6;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(pX, pY, pWidth, pHeight, pHeight / 2);
+        } else {
+          ctx.rect(pX, pY, pWidth, pHeight);
+        }
+        ctx.fill();
+      }
+      ctx.restore();
     } else {
+      // Fallback to color fill
+      ctx.fillStyle = paddleColor;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(pX, pY, pWidth, pHeight, pHeight / 2);
+      } else {
         ctx.rect(pX, pY, pWidth, pHeight);
-    }
-    ctx.fill();
-    
-    // Flash effect
-    if (pEffect > 0.1) {
+      }
+      ctx.fill();
+      
+      // Flash effect
+      if (pEffect > 0.1) {
         ctx.fillStyle = `rgba(255, 255, 255, ${pEffect * 0.6})`;
         ctx.beginPath();
         if (ctx.roundRect) {
-            ctx.roundRect(pX, pY, pWidth, pHeight, pHeight / 2);
+          ctx.roundRect(pX, pY, pWidth, pHeight, pHeight / 2);
         } else {
-            ctx.rect(pX, pY, pWidth, pHeight);
+          ctx.rect(pX, pY, pWidth, pHeight);
         }
         ctx.fill();
+      }
     }
     ctx.shadowBlur = 0;
 
     // 6. Draw Balls
+    const ballImage = getBallImage();
     state.balls.forEach(ball => {
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-        ctx.fillStyle = ball.color;
-        
         ctx.shadowBlur = 15;
         ctx.shadowColor = ball.color;
         
@@ -1068,8 +1188,42 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             ctx.shadowColor = '#ef4444';
         }
 
-        ctx.fill();
-        ctx.closePath();
+        // Draw ball image if available, otherwise fallback to color
+        if (ballImage && ballImage.complete && ballImage.naturalWidth > 0) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Scale up ball size for better visibility (2.5x radius for crisp rendering)
+          const ballSize = BALL_RADIUS * 2.5;
+          let drawX = ball.x - ballSize / 2;
+          let drawY = ball.y - ballSize / 2;
+          
+          // Maintain aspect ratio
+          const imgAspect = ballImage.naturalWidth / ballImage.naturalHeight;
+          let drawWidth = ballSize;
+          let drawHeight = ballSize;
+          
+          if (imgAspect > 1) {
+            // Image is wider
+            drawHeight = ballSize / imgAspect;
+            drawY += (ballSize - drawHeight) / 2;
+          } else {
+            // Image is taller
+            drawWidth = ballSize * imgAspect;
+            drawX += (ballSize - drawWidth) / 2;
+          }
+          
+          ctx.drawImage(ballImage, drawX, drawY, drawWidth, drawHeight);
+          ctx.restore();
+        } else {
+          // Fallback to color circle
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+          ctx.fillStyle = ball.color;
+          ctx.fill();
+          ctx.closePath();
+        }
     });
     ctx.shadowBlur = 0;
   };
