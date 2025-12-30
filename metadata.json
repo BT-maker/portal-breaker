@@ -1,0 +1,5 @@
+{
+  "name": "Portal Breaker",
+  "description": "A feature-rich block breaking game with 50 procedural levels, portals, shop system, and persistent progression built with React and Canvas.",
+  "requestFramePermissions": []
+}
