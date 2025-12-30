@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Scene, SaveData, ShopItem } from '../types';
 import { Button } from '../components/Button';
-import { SHOP_ITEMS } from '../constants';
+import { SHOP_ITEMS, PADDLE_IMAGES, BALL_IMAGES } from '../constants';
 
 interface ShopSceneProps {
   changeScene: (scene: Scene) => void;
@@ -100,6 +100,7 @@ const ShopCard: React.FC<ShopCardProps> = ({
   item, owned, equipped, locked, canAfford, onBuy, onEquip 
 }) => {
   const [animating, setAnimating] = useState(false);
+  const [previewImage, setPreviewImage] = useState<HTMLImageElement | null>(null);
 
   const handleAction = () => {
     if (!owned && canAfford && !locked) {
@@ -113,6 +114,40 @@ const ShopCard: React.FC<ShopCardProps> = ({
 
   const isSkin = item.type.includes('SKIN');
   const isPaddle = item.type === 'SKIN_PADDLE';
+  
+  // Load preview image for skins
+  useEffect(() => {
+    if (!isSkin) {
+      setPreviewImage(null);
+      return;
+    }
+
+    const getImagePath = () => {
+      if (item.id.startsWith('skin_paddle_')) {
+        const key = item.id.replace('skin_paddle_', '');
+        return PADDLE_IMAGES[key] || null;
+      } else if (item.id.startsWith('skin_ball_')) {
+        const key = item.id.replace('skin_ball_', '');
+        return BALL_IMAGES[key] || null;
+      }
+      return null;
+    };
+
+    const imagePath = getImagePath();
+    if (!imagePath) {
+      setPreviewImage(null);
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      setPreviewImage(img);
+    };
+    img.onerror = () => {
+      setPreviewImage(null);
+    };
+    img.src = imagePath;
+  }, [item.id, isSkin]);
   
   // Dynamic border/bg colors based on state
   let borderColor = "border-teal-800/50";
@@ -167,14 +202,36 @@ const ShopCard: React.FC<ShopCardProps> = ({
           {item.description}
         </p>
 
-        {/* Visual Preview (if color provided) */}
-        {item.value && typeof item.value === 'string' && item.value.startsWith('#') && (
-            <div className="mb-6 flex items-center justify-center p-4 bg-black/20 rounded-lg inner-shadow group-hover:bg-black/30 transition-colors">
-               {isPaddle ? (
-                   <div className="w-24 h-4 rounded-full shadow-lg transition-transform duration-500 group-hover:scale-110" style={{backgroundColor: item.value, boxShadow: `0 0 15px ${item.value}60`}}></div>
-               ) : (
-                   <div className="w-8 h-8 rounded-full shadow-lg transition-transform duration-500 group-hover:scale-110" style={{backgroundColor: item.value, boxShadow: `0 0 15px ${item.value}60`}}></div>
-               )}
+        {/* Visual Preview - Use image if available, fallback to color */}
+        {isSkin && (
+            <div className="mb-6 flex items-center justify-center p-4 bg-black/20 rounded-lg inner-shadow group-hover:bg-black/30 transition-colors min-h-[80px]">
+              {previewImage && previewImage.complete ? (
+                // Show actual image
+                <div className="flex items-center justify-center">
+                  {isPaddle ? (
+                    <img 
+                      src={previewImage.src} 
+                      alt={item.name}
+                      className="h-12 w-auto max-w-[200px] object-contain transition-transform duration-500 group-hover:scale-110 drop-shadow-lg"
+                      style={{ filter: locked ? 'grayscale(0.5) brightness(0.5)' : 'none' }}
+                    />
+                  ) : (
+                    <img 
+                      src={previewImage.src} 
+                      alt={item.name}
+                      className="h-16 w-16 object-contain transition-transform duration-500 group-hover:scale-110 drop-shadow-lg"
+                      style={{ filter: locked ? 'grayscale(0.5) brightness(0.5)' : 'none' }}
+                    />
+                  )}
+                </div>
+              ) : item.value && typeof item.value === 'string' && item.value.startsWith('#') ? (
+                // Fallback to color preview
+                isPaddle ? (
+                  <div className="w-24 h-4 rounded-full shadow-lg transition-transform duration-500 group-hover:scale-110" style={{backgroundColor: item.value, boxShadow: `0 0 15px ${item.value}60`}}></div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full shadow-lg transition-transform duration-500 group-hover:scale-110" style={{backgroundColor: item.value, boxShadow: `0 0 15px ${item.value}60`}}></div>
+                )
+              ) : null}
             </div>
         )}
 

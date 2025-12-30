@@ -1098,7 +1098,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       ctx.imageSmoothingQuality = 'high';
       ctx.globalAlpha = 1.0;
       
-      // Calculate aspect ratio and scale to fit properly
+      // Draw image at exact paddle size (no scaling, maintain aspect ratio)
       const imgAspect = paddleImage.naturalWidth / paddleImage.naturalHeight;
       const targetAspect = pWidth / pHeight;
       
@@ -1107,32 +1107,26 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       let drawX = pX;
       let drawY = pY;
       
-      // Maintain aspect ratio while filling the paddle area
+      // Maintain aspect ratio while fitting to paddle area
       if (imgAspect > targetAspect) {
-        // Image is wider, fit to height
+        // Image is wider, fit to height (keep height, adjust width)
         drawHeight = pHeight;
         drawWidth = drawHeight * imgAspect;
         drawX = pX + (pWidth - drawWidth) / 2;
       } else {
-        // Image is taller, fit to width
+        // Image is taller, fit to width (keep width, adjust height)
         drawWidth = pWidth;
         drawHeight = drawWidth / imgAspect;
         drawY = pY + (pHeight - drawHeight) / 2;
       }
       
-      // Scale up for better quality (2x for crisp rendering)
-      const scale = 2.0;
-      const scaledWidth = drawWidth * scale;
-      const scaledHeight = drawHeight * scale;
-      const scaledX = drawX - (scaledWidth - drawWidth) / 2;
-      const scaledY = drawY - (scaledHeight - drawHeight) / 2;
-      
+      // Draw at exact size (no extra scaling)
       ctx.drawImage(
         paddleImage,
-        scaledX,
-        scaledY,
-        scaledWidth,
-        scaledHeight
+        drawX,
+        drawY,
+        drawWidth,
+        drawHeight
       );
       
       // Flash effect overlay
@@ -1194,8 +1188,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           
-          // Scale up ball size for better visibility (2.5x radius for crisp rendering)
-          const ballSize = BALL_RADIUS * 2.5;
+          // Use exact ball size (diameter = radius * 2)
+          const ballSize = BALL_RADIUS * 2;
           let drawX = ball.x - ballSize / 2;
           let drawY = ball.y - ballSize / 2;
           
@@ -1205,13 +1199,15 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
           let drawHeight = ballSize;
           
           if (imgAspect > 1) {
-            // Image is wider
-            drawHeight = ballSize / imgAspect;
-            drawY += (ballSize - drawHeight) / 2;
+            // Image is wider, fit to height
+            drawHeight = ballSize;
+            drawWidth = drawHeight * imgAspect;
+            drawX = ball.x - drawWidth / 2;
           } else {
-            // Image is taller
-            drawWidth = ballSize * imgAspect;
-            drawX += (ballSize - drawWidth) / 2;
+            // Image is taller, fit to width
+            drawWidth = ballSize;
+            drawHeight = drawWidth / imgAspect;
+            drawY = ball.y - drawHeight / 2;
           }
           
           ctx.drawImage(ballImage, drawX, drawY, drawWidth, drawHeight);

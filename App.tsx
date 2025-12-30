@@ -5,11 +5,22 @@ import { MenuScene } from './scenes/MenuScene';
 import { LevelSelectScene } from './scenes/LevelSelectScene';
 import { GameScene } from './scenes/GameScene';
 import { ShopScene } from './scenes/ShopScene';
+import { LevelCompleteModal } from './components/LevelCompleteModal';
 
 const App: React.FC = () => {
   const [currentScene, setCurrentScene] = useState<Scene>(Scene.MENU);
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
   const [saveData, setSaveData] = useState<SaveData>(DEFAULT_SAVE_DATA);
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    win: boolean;
+    score: number;
+    reward?: number;
+  }>({
+    isOpen: false,
+    win: false,
+    score: 0,
+  });
 
   // Load Save
   useEffect(() => {
@@ -49,12 +60,27 @@ const App: React.FC = () => {
           }
         };
       });
-      alert(`TEBRİKLER! Seviye Tamamlandı.\nKazanılan Para: ${reward}`);
-      setCurrentScene(Scene.LEVEL_SELECT);
+      
+      // Show modal instead of alert
+      setModalState({
+        isOpen: true,
+        win: true,
+        score,
+        reward,
+      });
     } else {
-      alert(`OYUN BİTTİ! Skor: ${score}`);
-      setCurrentScene(Scene.LEVEL_SELECT);
+      // Show game over modal
+      setModalState({
+        isOpen: true,
+        win: false,
+        score,
+      });
     }
+  };
+
+  const handleModalClose = () => {
+    setModalState(prev => ({ ...prev, isOpen: false }));
+    setCurrentScene(Scene.LEVEL_SELECT);
   };
 
   const handleShopBuy = (itemId: string, cost: number) => {
@@ -134,6 +160,15 @@ const App: React.FC = () => {
           />
         )}
       </div>
+
+      {/* Level Complete Modal */}
+      <LevelCompleteModal
+        isOpen={modalState.isOpen}
+        win={modalState.win}
+        score={modalState.score}
+        reward={modalState.reward}
+        onClose={handleModalClose}
+      />
     </div>
   );
 };

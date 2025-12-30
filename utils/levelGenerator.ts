@@ -17,8 +17,12 @@ export function generateLevel(levelNum: number): LevelData {
   const blocks: Block[] = [];
   
   // Dynamic Grid sizing - Scales proportionally with level number
-  // Starts smaller (e.g., 6x10) and grows to max (24x34)
-  const rows = Math.min(24, 6 + Math.ceil(levelNum * 0.36));
+  // More rows (vertical expansion) - starts smaller and grows to max (32 rows)
+  // Available vertical space: ~510px (600 - 30 paddle - 60 startY)
+  // Each row: 12px height + 5px padding = 17px, so max ~30 rows comfortably
+  // Using 32 max to be safe and leave some space
+  const maxRows = Math.floor((GAME_HEIGHT - 90) / (12 + BLOCK_PADDING)); // Calculate safe max rows
+  const rows = Math.min(maxRows, 8 + Math.ceil(levelNum * 0.48)); // More aggressive row growth
   const cols = Math.min(34, 10 + Math.ceil(levelNum * 0.48));
   
   const totalBlockWidth = GAME_WIDTH - 60; // 30px padding sides
@@ -30,8 +34,25 @@ export function generateLevel(levelNum: number): LevelData {
   // Pattern Logic based on Level
   const patternType = levelNum % 4; // 0: Standard, 1: Checker, 2: Columns, 3: Pyramid/Scatter
 
+  // Calculate target block count - increases with level
+  // More blocks now with more rows: Level 1: ~40 blocks, Level 50: ~600+ blocks
+  const targetBlockCount = Math.min(700, 40 + (levelNum * 12));
+  let placedBlocks = 0;
+
+  // Hard block probability increases with level
+  // Level 1: 5%, Level 50: 40%
+  const hardBlockChance = Math.min(0.4, 0.05 + (levelNum * 0.007));
+  
+  // Explosive block chance (stays low)
+  const explosiveChance = 0.02;
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
+      // If we've reached target count, stop placing (but always fill top row)
+      if (placedBlocks >= targetBlockCount && r > 0) {
+        break;
+      }
+
       let shouldPlace = true;
 
       if (patternType === 1) { // Checkerboard
@@ -46,15 +67,25 @@ export function generateLevel(levelNum: number): LevelData {
       // Always fill top row for stability
       if (r === 0) shouldPlace = true;
 
-      // Random skip chance decreases as level increases (Higher levels = denser blocks)
-      // Level 1: High skip chance. Level 50: Very low skip chance.
-      const skipChance = Math.max(0.05, 0.3 - (levelNum * 0.005));
-      if (Math.random() < skipChance) shouldPlace = false;
+      // Random skip chance - decreases more aggressively as level increases
+      // Level 1: 15% skip, Level 10: 8% skip, Level 50: 1% skip (more dense)
+      const skipChance = Math.max(0.01, 0.15 - (levelNum * 0.0029));
+      if (Math.random() < skipChance && r > 0) shouldPlace = false;
 
       if (shouldPlace) {
-        // HP scales with level
-        const hp = Math.ceil(Math.random() * (1 + levelNum / 8));
-        const type = Math.random() > 0.96 ? 'EXPLOSIVE' : (hp > 2 ? 'HARD' : 'NORMAL');
+        // HP scales more aggressively with level
+        // Level 1: 1-2 HP, Level 50: 1-8 HP
+        const baseHp = Math.ceil(Math.random() * (1 + Math.floor(levelNum / 7)));
+        const hp = Math.max(1, baseHp);
+        
+        // Determine block type based on level and chance
+        let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' = 'NORMAL';
+        
+        if (Math.random() < explosiveChance) {
+          type = 'EXPLOSIVE';
+        } else if (hp >= 3 || Math.random() < hardBlockChance) {
+          type = 'HARD';
+        }
         
         blocks.push({
           id: `b_${r}_${c}`,
@@ -69,6 +100,8 @@ export function generateLevel(levelNum: number): LevelData {
           // Assign powerup chance during generation (10% chance per block)
           hasPowerUp: Math.random() < 0.1
         });
+        
+        placedBlocks++;
       }
     }
   }
