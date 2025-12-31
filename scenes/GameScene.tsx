@@ -245,6 +245,20 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
     // Touch Events - Mobile Support
     const handleTouchStart = (e: TouchEvent) => {
+      // Check if touch is on a modal (check for modal elements)
+      const target = e.target as HTMLElement;
+      if (target) {
+        // Check if target or any parent has high z-index (modal)
+        let element: HTMLElement | null = target;
+        while (element) {
+          const zIndex = window.getComputedStyle(element).zIndex;
+          if (zIndex && parseInt(zIndex) >= 9999) {
+            return; // Don't handle touch if it's on modal
+          }
+          element = element.parentElement;
+        }
+      }
+      
       e.preventDefault();
       if (e.touches.length > 0) {
         // Track the first touch

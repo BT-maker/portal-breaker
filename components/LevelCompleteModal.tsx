@@ -23,8 +23,18 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
       style={{
         animation: 'fadeIn 0.3s ease-out',
-        touchAction: 'none',
-        WebkitTouchCallout: 'none',
+        pointerEvents: 'auto',
+        touchAction: 'auto',
+      }}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+      }}
+      onTouchMove={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      }}
+      onTouchEnd={(e) => {
+        e.stopPropagation();
       }}
       onClick={(e) => {
         // Prevent closing on backdrop click for mobile
@@ -35,8 +45,18 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
         className="relative bg-gradient-to-br from-teal-900 via-emerald-900 to-teal-950 rounded-3xl shadow-2xl border-2 border-emerald-500/50 p-8 max-w-md w-full mx-4 transform transition-all"
         style={{
           animation: 'scaleIn 0.3s ease-out',
-          touchAction: 'auto',
           pointerEvents: 'auto',
+          position: 'relative',
+          zIndex: 10000,
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          e.stopPropagation();
+        }}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
         }}
         onClick={(e) => {
           // Prevent event bubbling
@@ -92,12 +112,16 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
           </div>
 
           {/* Button */}
-          <div className="pt-4">
+          <div className="pt-4" style={{ pointerEvents: 'auto', position: 'relative', zIndex: 10001 }}>
             <Button
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 onClose();
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
               }}
               onTouchEnd={(e) => {
                 e.preventDefault();
@@ -106,11 +130,14 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
               }}
               variant={win ? "success" : "primary"}
               size="lg"
-              className="w-full text-lg py-4 shadow-lg hover:shadow-xl transition-all touch-manipulation"
+              className="w-full text-lg py-4 shadow-lg hover:shadow-xl transition-all"
               style={{
                 touchAction: 'manipulation',
                 WebkitTapHighlightColor: 'transparent',
                 cursor: 'pointer',
+                pointerEvents: 'auto',
+                position: 'relative',
+                zIndex: 10002,
               }}
             >
               {win ? 'Devam Et' : 'Tamam'}
