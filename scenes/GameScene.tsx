@@ -161,9 +161,9 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [levelNum]);
 
-  // Input Handling
+  // Input Handling - Mouse and Touch
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const updatePaddlePosition = (clientX: number) => {
       if (uiState.isPaused) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -171,7 +171,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       
-      let x = (e.clientX - rect.left) * scaleX - gameStateRef.current.paddleWidth / 2;
+      let x = (clientX - rect.left) * scaleX - gameStateRef.current.paddleWidth / 2;
       
       // Clamp
       if (x < 0) x = 0;
@@ -187,11 +187,14 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       });
     };
 
-    const handleMouseDown = () => {
+    const handleStart = (clientX: number) => {
       if (uiState.isPaused) return;
       
       const state = gameStateRef.current;
       state.isMouseDown = true;
+
+      // Update paddle position immediately on touch/click
+      updatePaddlePosition(clientX);
 
       // If game hasn't started, launch ball
       if (!state.started) {
@@ -215,24 +218,75 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       // Note: Shooting logic is now handled in gameLoop based on isMouseDown
     };
 
+    const handleEnd = () => {
+      gameStateRef.current.isMouseDown = false;
+    };
+
+    // Mouse Events
+    const handleMouseMove = (e: MouseEvent) => {
+      updatePaddlePosition(e.clientX);
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      e.preventDefault();
+      handleStart(e.clientX);
+    };
+
     const handleMouseUp = () => {
-        gameStateRef.current.isMouseDown = false;
+      handleEnd();
     };
 
     const handleMouseLeave = () => {
-        gameStateRef.current.isMouseDown = false;
+      handleEnd();
     };
 
+    // Touch Events - Mobile Support
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length > 0) {
+        handleStart(e.touches[0].clientX);
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length > 0) {
+        updatePaddlePosition(e.touches[0].clientX);
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      handleEnd();
+    };
+
+    const handleTouchCancel = (e: TouchEvent) => {
+      e.preventDefault();
+      handleEnd();
+    };
+
+    // Add event listeners
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('mouseleave', handleMouseLeave);
+    
+    // Touch events for mobile
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', handleTouchCancel, { passive: false });
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('mouseleave', handleMouseLeave);
+      
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchCancel);
     };
   }, [uiState.isPaused, saveData]);
 
@@ -1249,7 +1303,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         ref={canvasRef}
         width={GAME_WIDTH}
         height={GAME_HEIGHT}
-        className="bg-[#022c22] rounded-xl shadow-[0_0_30px_rgba(20,184,166,0.2)] border-2 border-teal-800 cursor-none max-w-full max-h-[80vh]"
+        className="bg-[#022c22] rounded-xl shadow-[0_0_30px_rgba(20,184,166,0.2)] border-2 border-teal-800 cursor-none max-w-full max-h-[80vh] touch-none"
+        style={{ touchAction: 'none', userSelect: 'none' }}
       />
       
       {!gameStateRef.current.started && (
