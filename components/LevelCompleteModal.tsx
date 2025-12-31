@@ -20,15 +20,27 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
       style={{
         animation: 'fadeIn 0.3s ease-out',
+        touchAction: 'none',
+        WebkitTouchCallout: 'none',
+      }}
+      onClick={(e) => {
+        // Prevent closing on backdrop click for mobile
+        e.stopPropagation();
       }}
     >
       <div 
         className="relative bg-gradient-to-br from-teal-900 via-emerald-900 to-teal-950 rounded-3xl shadow-2xl border-2 border-emerald-500/50 p-8 max-w-md w-full mx-4 transform transition-all"
         style={{
           animation: 'scaleIn 0.3s ease-out',
+          touchAction: 'auto',
+          pointerEvents: 'auto',
+        }}
+        onClick={(e) => {
+          // Prevent event bubbling
+          e.stopPropagation();
         }}
       >
         {/* Glow Effect */}
@@ -82,10 +94,24 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
           {/* Button */}
           <div className="pt-4">
             <Button
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
               variant={win ? "success" : "primary"}
               size="lg"
-              className="w-full text-lg py-4 shadow-lg hover:shadow-xl transition-all"
+              className="w-full text-lg py-4 shadow-lg hover:shadow-xl transition-all touch-manipulation"
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                cursor: 'pointer',
+              }}
             >
               {win ? 'Devam Et' : 'Tamam'}
             </Button>

@@ -10,6 +10,7 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'primary', 
   size = 'md',
   className = '',
+  style,
   ...props 
 }) => {
   // Modern base styles with backdrop blur and cleaner transitions
@@ -35,11 +36,18 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button 
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      style={{
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent',
+        WebkitTouchCallout: 'none',
+        userSelect: 'none',
+        ...style,
+      }}
       {...props}
     >
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10 pointer-events-none">{children}</span>
       {/* Glossy shine effect */}
-      <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></div>
+      <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite] pointer-events-none"></div>
     </button>
   );
 };
