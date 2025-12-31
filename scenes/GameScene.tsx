@@ -187,6 +187,9 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       });
     };
 
+    // Track active touch for continuous movement
+    let activeTouchId: number | null = null;
+
     const handleStart = (clientX: number) => {
       if (uiState.isPaused) return;
       
@@ -244,34 +247,71 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const handleTouchStart = (e: TouchEvent) => {
       e.preventDefault();
       if (e.touches.length > 0) {
+        // Track the first touch
+        activeTouchId = e.touches[0].identifier;
         handleStart(e.touches[0].clientX);
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       e.preventDefault();
-      if (e.touches.length > 0) {
+      // Find the active touch by identifier
+      if (activeTouchId !== null) {
+        const touch = Array.from(e.touches).find(t => t.identifier === activeTouchId);
+        if (touch) {
+          // Keep firing while touching and moving
+          gameStateRef.current.isMouseDown = true;
+          // Continuously update paddle position as finger moves
+          updatePaddlePosition(touch.clientX);
+        } else if (e.touches.length > 0) {
+          // Fallback: use first touch if identifier not found
+          gameStateRef.current.isMouseDown = true;
+          updatePaddlePosition(e.touches[0].clientX);
+        }
+      } else if (e.touches.length > 0) {
+        // Fallback: if no active touch tracked, use first touch
+        gameStateRef.current.isMouseDown = true;
         updatePaddlePosition(e.touches[0].clientX);
       }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
       e.preventDefault();
-      handleEnd();
+      // Check if the active touch ended
+      if (activeTouchId !== null) {
+        const touchStillActive = Array.from(e.changedTouches).some(t => t.identifier === activeTouchId);
+        if (!touchStillActive || e.touches.length === 0) {
+          activeTouchId = null;
+          handleEnd();
+        }
+      } else {
+        handleEnd();
+      }
     };
 
     const handleTouchCancel = (e: TouchEvent) => {
       e.preventDefault();
+      activeTouchId = null;
       handleEnd();
     };
 
+    const canvas = canvasRef.current;
+    
     // Add event listeners
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('mouseleave', handleMouseLeave);
     
-    // Touch events for mobile
+    // Touch events for mobile - Add to both window and canvas for better tracking
+    if (canvas) {
+      canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+      canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+      canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+      canvas.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+    }
+    
+    // Also add to window for full screen coverage
     window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -282,6 +322,13 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('mouseleave', handleMouseLeave);
+      
+      if (canvas) {
+        canvas.removeEventListener('touchstart', handleTouchStart);
+        canvas.removeEventListener('touchmove', handleTouchMove);
+        canvas.removeEventListener('touchend', handleTouchEnd);
+        canvas.removeEventListener('touchcancel', handleTouchCancel);
+      }
       
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
