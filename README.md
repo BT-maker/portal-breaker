@@ -89,6 +89,27 @@ npm run build
 npm run preview
 ```
 
+### GitHub Pages Deployment
+
+1. **Build yap:**
+   ```bash
+   npm run build
+   ```
+
+2. **Deploy et:**
+   ```bash
+   npm run deploy
+   ```
+
+   Veya GitHub Actions kullanıyorsanız, `main` branch'e push yaptığınızda otomatik deploy olur.
+
+3. **GitHub Pages ayarları:**
+   - Repository Settings → Pages
+   - Source: `gh-pages` branch seç
+   - Root directory: `/ (root)` seç
+
+**Not:** Proje `https://BT-maker.github.io/portal-breaker/` adresinde çalışacak şekilde yapılandırılmıştır.
+
 ## 📁 Proje Yapısı
 
 ```

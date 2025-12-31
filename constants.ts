@@ -30,23 +30,25 @@ export const SKINS = {
   }
 };
 
-// Image paths for skins
+// Image paths for skins - use relative paths for GitHub Pages
+const BASE_PATH = import.meta.env.BASE_URL || '/portal-breaker/';
+
 export const PADDLE_IMAGES: Record<string, string> = {
-  default: '/assets/paddles/default.png',
-  crimson: '/assets/paddles/crimson.png',
-  neon: '/assets/paddles/neon.png',
-  gold: '/assets/paddles/gold.png',
-  ice: '/assets/paddles/ice.png',
-  void: '/assets/paddles/void.png',
+  default: `${BASE_PATH}assets/paddles/default.png`,
+  crimson: `${BASE_PATH}assets/paddles/crimson.png`,
+  neon: `${BASE_PATH}assets/paddles/neon.png`,
+  gold: `${BASE_PATH}assets/paddles/gold.png`,
+  ice: `${BASE_PATH}assets/paddles/ice.png`,
+  void: `${BASE_PATH}assets/paddles/void.png`,
 };
 
 export const BALL_IMAGES: Record<string, string> = {
-  default: '/assets/balls/default.png',
-  fire: '/assets/balls/fire.png',
-  plasma: '/assets/balls/plasma.png',
-  ice: '/assets/balls/ice.png',
-  toxic: '/assets/balls/toxic.png',
-  ghost: '/assets/balls/ghost.png',
+  default: `${BASE_PATH}assets/balls/default.png`,
+  fire: `${BASE_PATH}assets/balls/fire.png`,
+  plasma: `${BASE_PATH}assets/balls/plasma.png`,
+  ice: `${BASE_PATH}assets/balls/ice.png`,
+  toxic: `${BASE_PATH}assets/balls/toxic.png`,
+  ghost: `${BASE_PATH}assets/balls/ghost.png`,
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
