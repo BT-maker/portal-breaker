@@ -1340,37 +1340,82 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center h-full bg-teal-950/20">
-      {/* HUD */}
-      <div className="absolute top-0 w-full max-w-[800px] p-4 flex justify-between items-center z-10 font-mono">
-        <div className="flex gap-4">
-          <div className="bg-teal-900/80 text-teal-100 px-4 py-2 rounded-lg border border-teal-500/30 backdrop-blur font-bold shadow-lg">
-            SEVİYE {levelNum}
+    <div className="relative flex flex-col items-center justify-center h-full bg-teal-950/20 animate-fade-in">
+      {/* Enhanced Modern HUD */}
+      <div className="absolute top-0 w-full max-w-[800px] p-3 md:p-4 flex flex-wrap justify-between items-center gap-3 z-10 font-mono animate-slide-down">
+        <div className="flex gap-3 md:gap-4 flex-wrap">
+          {/* Level Badge */}
+          <div className="glass-strong text-teal-100 px-4 py-2.5 rounded-xl border-2 border-teal-500/40 font-bold shadow-xl hover-lift group">
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-300 text-sm">📊</span>
+              <span className="text-sm md:text-base">SEVİYE</span>
+              <span className="text-emerald-200 text-lg md:text-xl group-hover:scale-110 transition-transform">
+                {levelNum}
+              </span>
+            </div>
           </div>
-          <div className="bg-teal-900/80 text-teal-100 px-4 py-2 rounded-lg border border-teal-500/30 backdrop-blur font-bold shadow-lg">
-            PUAN: {uiState.score}
+          
+          {/* Score Badge with Animation */}
+          <div className="glass-strong text-teal-100 px-4 py-2.5 rounded-xl border-2 border-teal-500/40 font-bold shadow-xl hover-lift group">
+            <div className="flex items-center gap-2">
+              <span className="text-yellow-300 text-sm">⭐</span>
+              <span className="text-sm md:text-base">PUAN:</span>
+              <span className="text-yellow-200 text-lg md:text-xl font-mono group-hover:scale-110 transition-transform">
+                {uiState.score.toLocaleString()}
+              </span>
+            </div>
           </div>
         </div>
-        <div className="flex gap-1 items-center bg-teal-900/40 px-3 py-1 rounded-full border border-teal-500/20">
-          {Array.from({length: Math.max(0, uiState.lives)}).map((_, i) => (
-            <span key={i} className="text-red-500 text-xl drop-shadow-sm">♥</span>
-          ))}
+        
+        {/* Lives with Enhanced Display */}
+        <div className="flex gap-2 items-center glass-strong px-4 py-2 rounded-full border-2 border-red-500/40 shadow-xl hover-lift">
+          <span className="text-xs text-red-300 font-bold uppercase tracking-wider hidden md:inline">CAN:</span>
+          <div className="flex gap-1">
+            {Array.from({length: Math.max(0, uiState.lives)}).map((_, i) => (
+              <span 
+                key={i} 
+                className="text-red-400 text-xl md:text-2xl drop-shadow-lg animate-pulse"
+                style={{ animationDelay: `${i * 0.1}s` }}
+              >
+                ❤️
+              </span>
+            ))}
+          </div>
         </div>
-        <Button size="sm" variant="danger" onClick={onExit} className="shadow-lg">ÇIKIŞ</Button>
+        
+        {/* Exit Button */}
+        <Button 
+          size="sm" 
+          variant="danger" 
+          onClick={onExit} 
+          className="shadow-xl hover-lift ripple"
+        >
+          ✕ ÇIKIŞ
+        </Button>
       </div>
 
-      {/* Game Canvas */}
+      {/* Enhanced Game Canvas */}
       <canvas
         ref={canvasRef}
         width={GAME_WIDTH}
         height={GAME_HEIGHT}
-        className="bg-[#022c22] rounded-xl shadow-[0_0_30px_rgba(20,184,166,0.2)] border-2 border-teal-800 cursor-none max-w-full max-h-[80vh] touch-none"
+        className="bg-[#022c22] rounded-xl shadow-[0_0_40px_rgba(20,184,166,0.4)] border-2 border-teal-700/50 cursor-none max-w-full max-h-[80vh] touch-none animate-scale-in"
         style={{ touchAction: 'none', userSelect: 'none' }}
       />
       
+      {/* Enhanced Start Prompt */}
       {!gameStateRef.current.started && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-emerald-200 pointer-events-none animate-pulse font-display text-xl tracking-widest drop-shadow-md bg-teal-950/50 px-6 py-2 rounded-full border border-teal-500/30">
-          BAŞLAMAK İÇİN TIKLA
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20 animate-bounce-in">
+          <div className="glass-strong px-6 md:px-8 py-3 md:py-4 rounded-full border-2 border-emerald-400/50 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl md:text-3xl animate-pulse">👆</span>
+              <span className="text-emerald-200 font-display text-lg md:text-xl tracking-widest drop-shadow-lg animate-pulse">
+                BAŞLAMAK İÇİN TIKLA
+              </span>
+            </div>
+          </div>
+          {/* Glow effect */}
+          <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-2xl -z-10 animate-pulse-glow"></div>
         </div>
       )}
     </div>

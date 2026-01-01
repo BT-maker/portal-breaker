@@ -20,9 +20,8 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in"
       style={{
-        animation: 'fadeIn 0.3s ease-out',
         pointerEvents: 'auto',
         touchAction: 'auto',
       }}
@@ -41,10 +40,28 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
         e.stopPropagation();
       }}
     >
+      {/* Animated Background Particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className={`absolute w-2 h-2 rounded-full ${
+              win ? 'bg-emerald-400/30' : 'bg-red-400/30'
+            } animate-float`}
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 2}s`,
+              animationDuration: `${2 + Math.random() * 2}s`,
+            }}
+          />
+        ))}
+      </div>
+
       <div 
-        className="relative bg-gradient-to-br from-teal-900 via-emerald-900 to-teal-950 rounded-3xl shadow-2xl border-2 border-emerald-500/50 p-8 max-w-md w-full mx-4 transform transition-all"
+        className="relative glass-strong rounded-3xl shadow-2xl border-2 p-6 md:p-8 max-w-md w-full mx-4 animate-bounce-in overflow-hidden"
         style={{
-          animation: 'scaleIn 0.3s ease-out',
+          borderColor: win ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)',
           pointerEvents: 'auto',
           position: 'relative',
           zIndex: 10000,
@@ -63,56 +80,92 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
           e.stopPropagation();
         }}
       >
-        {/* Glow Effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-3xl blur-xl -z-10"></div>
+        {/* Enhanced Glow Effect */}
+        <div 
+          className={`absolute inset-0 rounded-3xl blur-2xl -z-10 ${
+            win 
+              ? 'bg-gradient-to-br from-emerald-500/30 via-teal-500/20 to-emerald-500/30 animate-pulse-glow' 
+              : 'bg-gradient-to-br from-red-500/30 via-orange-500/20 to-red-500/30 animate-pulse'
+          }`}
+        ></div>
         
         {/* Content */}
-        <div className="text-center space-y-6">
-          {/* Icon */}
-          <div className="flex justify-center">
+        <div className="text-center space-y-6 relative z-10">
+          {/* Enhanced Icon with Multiple Layers */}
+          <div className="flex justify-center animate-slide-down">
             {win ? (
               <div className="relative">
-                <div className="absolute inset-0 bg-emerald-400 rounded-full blur-2xl opacity-50 animate-pulse"></div>
-                <div className="relative text-7xl animate-bounce">🎉</div>
+                {/* Outer Glow Rings */}
+                <div className="absolute inset-0 bg-emerald-400 rounded-full blur-3xl opacity-40 animate-pulse"></div>
+                <div className="absolute inset-0 bg-emerald-300 rounded-full blur-2xl opacity-30 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                {/* Main Icon */}
+                <div className="relative text-7xl md:text-8xl animate-bounce" style={{ animationDuration: '1s' }}>
+                  🎉
+                </div>
+                {/* Sparkle Effects */}
+                {[...Array(8)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute w-1 h-1 bg-yellow-300 rounded-full animate-ping"
+                    style={{
+                      top: `${50 + 30 * Math.cos((i * Math.PI * 2) / 8)}%`,
+                      left: `${50 + 30 * Math.sin((i * Math.PI * 2) / 8)}%`,
+                      animationDelay: `${i * 0.1}s`,
+                    }}
+                  />
+                ))}
               </div>
             ) : (
               <div className="relative">
-                <div className="absolute inset-0 bg-red-400 rounded-full blur-2xl opacity-50 animate-pulse"></div>
-                <div className="relative text-7xl">💀</div>
+                <div className="absolute inset-0 bg-red-400 rounded-full blur-3xl opacity-40 animate-pulse"></div>
+                <div className="relative text-7xl md:text-8xl animate-bounce-in">💀</div>
               </div>
             )}
           </div>
 
-          {/* Title */}
-          <div>
-            <h2 className={`text-4xl font-black mb-2 ${win ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-300 to-emerald-400' : 'text-red-400'}`}>
+          {/* Enhanced Title */}
+          <div className="animate-slide-up">
+            <h2 className={`text-3xl md:text-4xl font-black mb-2 ${
+              win 
+                ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-300 to-emerald-400 animate-gradient' 
+                : 'text-red-400'
+            }`}>
               {win ? 'TEBRİKLER!' : 'OYUN BİTTİ!'}
             </h2>
-            <p className="text-teal-200 text-lg font-semibold">
+            <p className="text-teal-200/90 text-base md:text-lg font-semibold">
               {win ? 'Seviye Tamamlandı' : 'Tekrar Deneyin'}
             </p>
           </div>
 
-          {/* Stats */}
-          <div className="bg-black/30 rounded-2xl p-6 space-y-4 border border-teal-800/50">
+          {/* Enhanced Stats Card */}
+          <div className="glass rounded-2xl p-5 md:p-6 space-y-4 border border-teal-800/50 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-center justify-between">
-              <span className="text-teal-300 font-bold">Skor:</span>
-              <span className="text-white text-xl font-mono font-bold">{score.toLocaleString()}</span>
+              <span className="text-teal-300 font-bold flex items-center gap-2">
+                <span className="text-lg">📊</span>
+                Skor:
+              </span>
+              <span className="text-white text-xl md:text-2xl font-mono font-bold bg-gradient-to-r from-white to-teal-200 bg-clip-text text-transparent">
+                {score.toLocaleString()}
+              </span>
             </div>
             
             {win && reward && (
-              <div className="flex items-center justify-between pt-4 border-t border-teal-800/50">
+              <div className="flex items-center justify-between pt-4 border-t border-teal-800/50 animate-slide-up" style={{ animationDelay: '0.2s' }}>
                 <span className="text-yellow-300 font-bold flex items-center gap-2">
-                  <span className="text-2xl">⛃</span>
-                  Kazanılan Para:
+                  <span className="text-2xl animate-pulse">⛃</span>
+                  <span className="hidden md:inline">Kazanılan Para:</span>
+                  <span className="md:hidden">Para:</span>
                 </span>
-                <span className="text-yellow-400 text-2xl font-mono font-bold">+{reward}</span>
+                <span className="text-yellow-400 text-2xl md:text-3xl font-mono font-bold flex items-center gap-1">
+                  <span className="animate-bounce">+</span>
+                  {reward}
+                </span>
               </div>
             )}
           </div>
 
-          {/* Button */}
-          <div className="pt-4" style={{ pointerEvents: 'auto', position: 'relative', zIndex: 10001 }}>
+          {/* Enhanced Button */}
+          <div className="pt-4 animate-slide-up" style={{ animationDelay: '0.3s', pointerEvents: 'auto', position: 'relative', zIndex: 10001 }}>
             <Button
               onClick={(e) => {
                 e.preventDefault();
@@ -130,7 +183,7 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
               }}
               variant={win ? "success" : "primary"}
               size="lg"
-              className="w-full text-lg py-4 shadow-lg hover:shadow-xl transition-all"
+              className="w-full text-base md:text-lg py-4 shadow-2xl hover:shadow-3xl transition-all ripple"
               style={{
                 touchAction: 'manipulation',
                 WebkitTapHighlightColor: 'transparent',
@@ -140,14 +193,21 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
                 zIndex: 10002,
               }}
             >
-              {win ? 'Devam Et' : 'Tamam'}
+              {win ? '✨ Devam Et' : '🔄 Tekrar Dene'}
             </Button>
           </div>
         </div>
 
-        {/* Decorative Elements */}
-        <div className="absolute top-4 right-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-4 left-4 w-16 h-16 bg-teal-500/10 rounded-full blur-xl"></div>
+        {/* Enhanced Decorative Elements */}
+        <div className={`absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl animate-pulse ${
+          win ? 'bg-emerald-500/20' : 'bg-red-500/20'
+        }`}></div>
+        <div className={`absolute bottom-4 left-4 w-16 h-16 rounded-full blur-xl animate-pulse ${
+          win ? 'bg-teal-500/20' : 'bg-orange-500/20'
+        }`} style={{ animationDelay: '0.5s' }}></div>
+
+        {/* Shine Effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_infinite] pointer-events-none"></div>
       </div>
     </div>
   );

@@ -117,48 +117,74 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-screen bg-teal-950 text-white overflow-hidden bg-[url('https://picsum.photos/1920/1080?blur=5')] bg-cover bg-center bg-no-repeat">
-      {/* Dark Teal Overlay */}
-      <div className="absolute inset-0 bg-[#042f2e]/95 backdrop-blur-sm"></div>
+    <div className="w-full h-screen bg-teal-950 text-white overflow-hidden bg-[url('https://picsum.photos/1920/1080?blur=5')] bg-cover bg-center bg-no-repeat relative">
+      {/* Enhanced Dark Teal Overlay with Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#042f2e]/95 via-[#022c22]/95 to-[#042f2e]/95 backdrop-blur-sm"></div>
       
-      <div className="relative z-10 w-full h-full max-w-6xl mx-auto shadow-2xl bg-[#042f2e] border-x border-teal-900/50">
-        
-        {currentScene === Scene.MENU && (
-          <MenuScene 
-            changeScene={setCurrentScene} 
-            currency={saveData.currency} 
-          />
-        )}
-
-        {currentScene === Scene.LEVEL_SELECT && (
-          <LevelSelectScene 
-            changeScene={setCurrentScene} 
-            unlockedLevels={saveData.unlockedLevels}
-            levelStars={saveData.levelStars}
-            onSelectLevel={(lvl) => {
-              setSelectedLevel(lvl);
-              setCurrentScene(Scene.GAME);
+      {/* Animated Background Particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-teal-400/20 rounded-full animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${4 + Math.random() * 3}s`,
             }}
           />
-        )}
+        ))}
+      </div>
+      
+      <div className="relative z-10 w-full h-full max-w-6xl mx-auto shadow-2xl bg-[#042f2e] border-x border-teal-900/50 overflow-hidden">
+        {/* Scene Container with Transition */}
+        <div className="relative w-full h-full">
+          {currentScene === Scene.MENU && (
+            <div className="absolute inset-0 animate-fade-in">
+              <MenuScene 
+                changeScene={setCurrentScene} 
+                currency={saveData.currency} 
+              />
+            </div>
+          )}
 
-        {currentScene === Scene.SHOP && (
-          <ShopScene 
-            changeScene={setCurrentScene}
-            saveData={saveData}
-            buyItem={handleShopBuy}
-            equipItem={handleEquipItem}
-          />
-        )}
+          {currentScene === Scene.LEVEL_SELECT && (
+            <div className="absolute inset-0 animate-slide-left">
+              <LevelSelectScene 
+                changeScene={setCurrentScene} 
+                unlockedLevels={saveData.unlockedLevels}
+                levelStars={saveData.levelStars}
+                onSelectLevel={(lvl) => {
+                  setSelectedLevel(lvl);
+                  setCurrentScene(Scene.GAME);
+                }}
+              />
+            </div>
+          )}
 
-        {currentScene === Scene.GAME && (
-          <GameScene 
-            levelNum={selectedLevel}
-            saveData={saveData}
-            onGameOver={handleLevelComplete}
-            onExit={() => setCurrentScene(Scene.MENU)}
-          />
-        )}
+          {currentScene === Scene.SHOP && (
+            <div className="absolute inset-0 animate-slide-right">
+              <ShopScene 
+                changeScene={setCurrentScene}
+                saveData={saveData}
+                buyItem={handleShopBuy}
+                equipItem={handleEquipItem}
+              />
+            </div>
+          )}
+
+          {currentScene === Scene.GAME && (
+            <div className="absolute inset-0 animate-fade-in">
+              <GameScene 
+                levelNum={selectedLevel}
+                saveData={saveData}
+                onGameOver={handleLevelComplete}
+                onExit={() => setCurrentScene(Scene.MENU)}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Level Complete Modal */}
