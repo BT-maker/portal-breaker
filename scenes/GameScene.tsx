@@ -3,7 +3,7 @@ import { Scene, SaveData, LevelData, Vector2, Portal, Block, Particle, BallEntit
 import { generateLevel } from '../utils/levelGenerator.ts';
 import { Button } from '../components/Button';
 import { audioManager } from '../utils/audio';
-import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, PORTAL_RADIUS, SKINS, PADDLE_IMAGES, BALL_IMAGES } from '../constants';
+import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, PORTAL_RADIUS, SKINS, PADDLE_IMAGES, BALL_IMAGES, ACHIEVEMENTS } from '../constants';
 
 interface GameSceneProps {
   levelNum: number;
@@ -12,7 +12,7 @@ interface GameSceneProps {
   onExit: () => void;
 }
 
-export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGameOver, onExit }) => {
+export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGameOver, onExit, onAchievementUnlocked, onStatsUpdate }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>();
   
@@ -40,12 +40,27 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     portalCooldown: 0,
     lastTime: 0,
     combo: 0,
+    comboMultiplier: 1, // Combo çarpanı
+    comboTimer: 0, // Combo zamanlayıcısı (frames)
+    maxCombo: 0, // Maksimum combo
+    comboHistory: [] as number[], // Combo geçmişi
     started: false,
     frameCount: 0, // Used for throttling particle emission
     paddleHitEffect: 0, // 0 to 1, animation state for paddle hit
     lastShotTime: 0, // Cooldown for shooting
     rapidFireTimer: 0, // Timer for fast shooting powerup
+    shieldTimer: 0, // Timer for shield powerup
+    slowMoTimer: 0, // Timer for slow-mo powerup
+    explosiveShotTimer: 0, // Timer for explosive shot powerup
+    laserBeamTimer: 0, // Timer for laser beam powerup
+    multiShotTimer: 0, // Timer for multi-shot powerup
     isMouseDown: false, // Track mouse button state for continuous fire
+    screenShake: { x: 0, y: 0, intensity: 0, duration: 0 }, // Screen shake state
+    screenFlash: { intensity: 0, color: '#ffffff', duration: 0 }, // Screen flash state
+    levelStartTime: Date.now(), // Level start time for speed demon achievement
+    blocksBrokenThisLevel: 0, // Blocks broken in current level
+    powerUpsCollectedThisLevel: 0, // Power-ups collected in current level
+    initialLives: INITIAL_LIVES, // Track initial lives for perfect level
   });
 
   // React State for UI overlays
@@ -381,7 +396,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     }
 
     // PowerUp Overrides
-    if (state.rapidFireTimer > 0) {
+    const isRapidFire = state.rapidFireTimer > 0;
+    if (isRapidFire) {
         shotConfig.cooldown = 100; // Super fast
         shotConfig.color = '#ffffff'; // White hot
         shotConfig.speed += 4;
@@ -390,33 +406,83 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     if (now - state.lastShotTime < shotConfig.cooldown) return;
     state.lastShotTime = now;
 
+    // Helper to create projectile with effects
+    const createProjectile = (x: number, y: number) => {
+      const proj: Projectile = {
+        id: Math.random().toString(),
+        x,
+        y,
+        width: shotConfig.width,
+        height: shotConfig.height,
+        vy: -shotConfig.speed,
+        color: shotConfig.color,
+        effectType: isRapidFire ? 'rapidfire' : 'normal',
+        glowIntensity: isRapidFire ? 1.0 : 0.5,
+        trail: [],
+        particles: []
+      };
+      
+      // RapidFire için özel efektler
+      if (isRapidFire) {
+        // Trail başlangıç noktası
+        proj.trail = [{
+          x: proj.x + proj.width / 2,
+          y: proj.y + proj.height,
+          life: 1.0
+        }];
+        
+        // İlk partiküller
+        for (let i = 0; i < 3; i++) {
+          proj.particles!.push({
+            id: Math.random().toString(),
+            x: proj.x + proj.width / 2,
+            y: proj.y + proj.height / 2,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            life: 0.5,
+            maxLife: 0.5,
+            color: '#ffffff',
+            size: Math.random() * 2 + 1
+          });
+        }
+      }
+      
+      return proj;
+    };
+
     // Left Gun
-    state.projectiles.push({
-      id: Math.random().toString(),
-      x: state.paddleX + 2,
-      y: GAME_HEIGHT - 35,
-      width: shotConfig.width,
-      height: shotConfig.height,
-      vy: -shotConfig.speed, 
-      color: shotConfig.color
-    });
+    const leftProj = createProjectile(state.paddleX + 2, GAME_HEIGHT - 35);
+    state.projectiles.push(leftProj);
     
     // Muzzle Flash Particles Left
     createMuzzleFlash(state.paddleX + 2, GAME_HEIGHT - 40, shotConfig.flashColor, skinId);
 
     // Right Gun
-    state.projectiles.push({
-      id: Math.random().toString(),
-      x: state.paddleX + state.paddleWidth - 2 - shotConfig.width,
-      y: GAME_HEIGHT - 35,
-      width: shotConfig.width,
-      height: shotConfig.height,
-      vy: -shotConfig.speed,
-      color: shotConfig.color
-    });
+    const rightProj = createProjectile(state.paddleX + state.paddleWidth - 2 - shotConfig.width, GAME_HEIGHT - 35);
+    state.projectiles.push(rightProj);
 
     // Muzzle Flash Particles Right
     createMuzzleFlash(state.paddleX + state.paddleWidth - 6, GAME_HEIGHT - 40, shotConfig.flashColor, skinId);
+    
+    // Multi-shot: fire additional projectiles in an arc
+    if (state.multiShotTimer > 0) {
+        const angles = [-0.3, -0.15, 0.15, 0.3];
+        angles.forEach((angle) => {
+            const multiProj: Projectile = {
+                id: Math.random().toString(),
+                x: state.paddleX + state.paddleWidth / 2 - shotConfig.width / 2,
+                y: GAME_HEIGHT - 35,
+                width: shotConfig.width,
+                height: shotConfig.height,
+                vy: -shotConfig.speed * Math.cos(angle),
+                vx: shotConfig.speed * Math.sin(angle),
+                color: shotConfig.color,
+                effectType: 'normal',
+                glowIntensity: 0.6,
+            };
+            state.projectiles.push(multiProj);
+        });
+    }
 
     // Visual Recoil (Simulated by hit effect)
     state.paddleHitEffect = 0.2;
@@ -784,12 +850,65 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
     const state = gameStateRef.current;
     state.lastTime = time;
+    state.frameCount++;
+
+    // Combo timer update
+    if (state.comboTimer > 0) {
+      state.comboTimer--;
+      if (state.comboTimer === 0) {
+        // Combo lost
+        if (state.combo > 0) {
+          state.combo = 0;
+          state.comboMultiplier = 1;
+        }
+      }
+    }
+
+    // Screen shake update
+    if (state.screenShake.duration > 0) {
+      state.screenShake.duration--;
+      const intensity = state.screenShake.intensity * (state.screenShake.duration / 60);
+      state.screenShake.x = (Math.random() - 0.5) * intensity;
+      state.screenShake.y = (Math.random() - 0.5) * intensity;
+      if (state.screenShake.duration <= 0) {
+        state.screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+      }
+    }
+
+    // Screen flash update
+    if (state.screenFlash.duration > 0) {
+      state.screenFlash.duration--;
+      state.screenFlash.intensity *= 0.9;
+      if (state.screenFlash.duration <= 0) {
+        state.screenFlash = { intensity: 0, color: '#ffffff', duration: 0 };
+      }
+    }
+
+    // Power-up timers
+    if (state.shieldTimer > 0) state.shieldTimer--;
+    if (state.slowMoTimer > 0) state.slowMoTimer--;
+    if (state.explosiveShotTimer > 0) state.explosiveShotTimer--;
+    if (state.laserBeamTimer > 0) state.laserBeamTimer--;
+    if (state.multiShotTimer > 0) state.multiShotTimer--;
 
     // --- CONTINUOUS FIRE LOGIC ---
     if (state.started && state.isMouseDown) {
-        fireGuns();
+        // Laser beam: continuous fire
+        if (state.laserBeamTimer > 0) {
+            // Fire every frame when laser is active
+            if (state.frameCount % 2 === 0) {
+                fireGuns();
+            }
+        } else {
+            fireGuns();
+        }
+        
+        // Multi-shot: fire multiple projectiles (handled in fireGuns)
     }
 
+    // Slow-mo effect: adjust update rate
+    const timeDelta = state.slowMoTimer > 0 ? 0.5 : 1.0;
+    
     updatePhysics();
     generateEffects(); 
     draw();
@@ -797,6 +916,29 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const breakableBlocks = state.blocks.filter(b => b.type !== 'PORTAL');
     if (breakableBlocks.length === 0) {
       audioManager.playLevelComplete();
+      
+      // Check achievements
+      const levelTime = (Date.now() - state.levelStartTime) / 1000; // seconds
+      const isPerfect = state.lives >= state.initialLives;
+      const isFast = levelTime <= 30;
+      
+      if (onStatsUpdate) {
+        const newStats = {
+          ...saveData.stats,
+          totalBlocksBroken: (saveData.stats?.totalBlocksBroken || 0) + state.blocksBrokenThisLevel,
+          maxCombo: Math.max(saveData.stats?.maxCombo || 0, state.maxCombo),
+        };
+        
+        if (isPerfect) {
+          newStats.perfectLevels = (saveData.stats?.perfectLevels || 0) + 1;
+        }
+        if (isFast) {
+          newStats.fastLevels = (saveData.stats?.fastLevels || 0) + 1;
+        }
+        
+        onStatsUpdate(newStats);
+      }
+      
       onGameOver(state.score, true);
       return; 
     }
@@ -844,7 +986,68 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     // Projectile Physics (Shooting)
     for (let i = state.projectiles.length - 1; i >= 0; i--) {
       const proj = state.projectiles[i];
+      const prevY = proj.y;
       proj.y += proj.vy;
+      if (proj.vx !== undefined) {
+        proj.x += proj.vx;
+        
+        // Bounce off walls for multi-shot
+        if (proj.x < 0 || proj.x + proj.width > GAME_WIDTH) {
+          proj.vx *= -1;
+        }
+      }
+
+      // Update trail for RapidFire projectiles
+      if (proj.effectType === 'rapidfire' && proj.trail) {
+        // Add new trail point
+        proj.trail.push({
+          x: proj.x + proj.width / 2,
+          y: proj.y + proj.height / 2,
+          life: 1.0
+        });
+        
+        // Update existing trail points
+        for (let j = proj.trail.length - 1; j >= 0; j--) {
+          proj.trail[j].life -= 0.05;
+          if (proj.trail[j].life <= 0) {
+            proj.trail.splice(j, 1);
+          }
+        }
+        
+        // Limit trail length (max 20 points)
+        if (proj.trail.length > 20) {
+          proj.trail.shift();
+        }
+      }
+
+      // Update projectile particles (for RapidFire)
+      if (proj.particles) {
+        for (let j = proj.particles.length - 1; j >= 0; j--) {
+          const part = proj.particles[j];
+          part.x += part.vx;
+          part.y += part.vy;
+          part.life -= 0.03;
+          part.size *= 0.98;
+          if (part.life <= 0) {
+            proj.particles.splice(j, 1);
+          }
+        }
+        
+        // Add new particles for RapidFire (continuous emission)
+        if (proj.effectType === 'rapidfire' && state.frameCount % 2 === 0) {
+          proj.particles.push({
+            id: Math.random().toString(),
+            x: proj.x + proj.width / 2 + (Math.random() - 0.5) * proj.width,
+            y: proj.y + proj.height / 2 + (Math.random() - 0.5) * proj.height,
+            vx: (Math.random() - 0.5) * 3,
+            vy: (Math.random() - 0.5) * 3,
+            life: 0.4,
+            maxLife: 0.4,
+            color: Math.random() > 0.5 ? '#ffffff' : '#fbbf24',
+            size: Math.random() * 2 + 1
+          });
+        }
+      }
 
       if (proj.y < 0) {
         state.projectiles.splice(i, 1);
@@ -869,6 +1072,12 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             if (b.hp <= 0) {
                 // Check Powerup
                 if (b.hasPowerUp) {
+                    const powerUpTypes: PowerUp['type'][] = [
+                        'MULTIBALL', 'FAST_SHOOT', 'SHIELD', 'SLOW_MO', 
+                        'EXPLOSIVE_SHOT', 'LASER_BEAM', 'MULTI_SHOT'
+                    ];
+                    const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                    
                     state.powerUps.push({
                         id: Math.random().toString(),
                         x: b.x + b.width / 2 - 10,
@@ -876,8 +1085,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                         width: 20,
                         height: 20,
                         vy: 3,
-                        // Random Powerup type
-                        type: Math.random() > 0.5 ? 'MULTIBALL' : 'FAST_SHOOT'
+                        type: randomType
                     });
                 }
 
@@ -885,6 +1093,51 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                 state.blocks.splice(bIdx, 1);
                 state.score += 5; // Less points for shooting than ball hit
                 setUiState(s => ({ ...s, score: state.score }));
+                
+                // Explosive shot effect
+                if (state.explosiveShotTimer > 0) {
+                    const explosionRadius = 60;
+                    const explosionX = proj.x + proj.width / 2;
+                    const explosionY = proj.y + proj.height / 2;
+                    
+                    // Create explosion particles
+                    for (let i = 0; i < 30; i++) {
+                        const angle = (Math.PI * 2 * i) / 30;
+                        const speed = 5 + Math.random() * 5;
+                        state.particles.push({
+                            id: Math.random().toString(),
+                            x: explosionX,
+                            y: explosionY,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            life: 1.0,
+                            maxLife: 1.0,
+                            color: Math.random() > 0.5 ? '#ff6b00' : '#ff0000',
+                            size: Math.random() * 4 + 2
+                        });
+                    }
+                    
+                    // Damage nearby blocks
+                    for (let nearbyIdx = state.blocks.length - 1; nearbyIdx >= 0; nearbyIdx--) {
+                        const nearbyBlock = state.blocks[nearbyIdx];
+                        const dx = (nearbyBlock.x + nearbyBlock.width / 2) - explosionX;
+                        const dy = (nearbyBlock.y + nearbyBlock.height / 2) - explosionY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < explosionRadius && nearbyBlock.type !== 'PORTAL') {
+                            nearbyBlock.hp--;
+                            if (nearbyBlock.hp <= 0) {
+                                createBlockDebris(nearbyBlock.x, nearbyBlock.y, nearbyBlock.color, nearbyBlock.width, nearbyBlock.height);
+                                state.blocks.splice(nearbyIdx, 1);
+                                state.score += 5;
+                            }
+                        }
+                    }
+                    
+                    // Screen shake
+                    state.screenShake = { x: 0, y: 0, intensity: 5, duration: 15 };
+                }
+                
                 audioManager.playBrickDestroy();
             } else {
                 audioManager.playHit();
@@ -917,12 +1170,32 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             p.x + p.width >= paddleRect.x &&
             p.x <= paddleRect.x + paddleRect.w) {
             
+            // Power-up collected effects
+            createParticles(p.x + p.width / 2, p.y + p.height / 2, '#ffff00', 15, 1.0, 8);
+            state.screenFlash = { intensity: 0.5, color: '#ffff00', duration: 10 };
+            state.screenShake = { x: 0, y: 0, intensity: 2, duration: 10 };
+            
             if (p.type === 'MULTIBALL') {
                 spawnMultiball();
                 audioManager.playPortal(); 
             } else if (p.type === 'FAST_SHOOT') {
                 activateRapidFire();
-                audioManager.playPortal(); // Reuse sound for now
+                audioManager.playPortal();
+            } else if (p.type === 'SHIELD') {
+                state.shieldTimer = 600; // 10 seconds
+                audioManager.playPortal();
+            } else if (p.type === 'SLOW_MO') {
+                state.slowMoTimer = 600; // 10 seconds
+                audioManager.playPortal();
+            } else if (p.type === 'EXPLOSIVE_SHOT') {
+                state.explosiveShotTimer = 600; // 10 seconds
+                audioManager.playPortal();
+            } else if (p.type === 'LASER_BEAM') {
+                state.laserBeamTimer = 600; // 10 seconds
+                audioManager.playPortal();
+            } else if (p.type === 'MULTI_SHOT') {
+                state.multiShotTimer = 600; // 10 seconds
+                audioManager.playPortal();
             }
             state.powerUps.splice(i, 1);
             continue;
@@ -1018,6 +1291,12 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                     if (b.hp <= 0) {
                         // Check for PowerUp spawn
                         if (b.hasPowerUp) {
+                            const powerUpTypes: PowerUp['type'][] = [
+                                'MULTIBALL', 'FAST_SHOOT', 'SHIELD', 'SLOW_MO', 
+                                'EXPLOSIVE_SHOT', 'LASER_BEAM', 'MULTI_SHOT'
+                            ];
+                            const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                            
                             state.powerUps.push({
                                 id: Math.random().toString(),
                                 x: b.x + b.width / 2 - 10,
@@ -1025,8 +1304,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                                 width: 20,
                                 height: 20,
                                 vy: 3,
-                                // Random PowerUp
-                                type: Math.random() > 0.5 ? 'MULTIBALL' : 'FAST_SHOOT'
+                                type: randomType
                             });
                         }
 
@@ -1034,10 +1312,34 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                         createBlockDebris(b.x, b.y, b.color, b.width, b.height);
 
                         state.blocks.splice(bIdx, 1);
+                        
+                        // Combo System
                         state.combo++;
-                        const points = 10 * state.combo;
+                        state.comboTimer = 180; // 3 seconds at 60fps
+                        state.maxCombo = Math.max(state.maxCombo, state.combo);
+                        
+                        // Combo multiplier calculation
+                        if (state.combo >= 50) state.comboMultiplier = 10;
+                        else if (state.combo >= 30) state.comboMultiplier = 5;
+                        else if (state.combo >= 20) state.comboMultiplier = 3;
+                        else if (state.combo >= 10) state.comboMultiplier = 2;
+                        else state.comboMultiplier = 1;
+                        
+                        const basePoints = 10;
+                        const points = basePoints * state.combo * state.comboMultiplier;
                         state.score += points;
                         setUiState(s => ({ ...s, score: state.score }));
+                        
+                        // Screen shake on combo milestones
+                        if (state.combo % 10 === 0) {
+                            state.screenShake = { x: 0, y: 0, intensity: 3, duration: 10 };
+                        }
+                        
+                        // Flash effect on high combos
+                        if (state.combo >= 20) {
+                            state.screenFlash = { intensity: 0.3, color: '#ffff00', duration: 5 };
+                        }
+                        
                         audioManager.playBrickDestroy();
                     } else {
                         // Just a hit
@@ -1057,9 +1359,13 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Apply screen shake
+    const state = gameStateRef.current;
+    ctx.save();
+    ctx.translate(state.screenShake.x, state.screenShake.y);
+
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    const state = gameStateRef.current;
     const paddleSkinId = saveData.equipped.paddleSkin;
 
     // 1. Draw Particles
@@ -1087,23 +1393,84 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     });
     ctx.globalAlpha = 1.0;
 
-    // 2. Draw Projectiles
+    // 2. Draw Projectiles with Enhanced Effects
     state.projectiles.forEach(proj => {
+        const isRapidFire = proj.effectType === 'rapidfire';
+        const glowIntensity = proj.glowIntensity || 0.5;
+        
+        // Draw Trail for RapidFire projectiles
+        if (isRapidFire && proj.trail && proj.trail.length > 1) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(proj.trail[0].x, proj.trail[0].y);
+            
+            // Draw gradient trail
+            for (let i = 1; i < proj.trail.length; i++) {
+                const point = proj.trail[i];
+                const alpha = point.life * 0.6;
+                ctx.lineTo(point.x, point.y);
+                
+                // Draw trail segments with gradient
+                if (i > 0) {
+                    const prevPoint = proj.trail[i - 1];
+                    const gradient = ctx.createLinearGradient(prevPoint.x, prevPoint.y, point.x, point.y);
+                    gradient.addColorStop(0, `rgba(255, 255, 255, ${prevPoint.life * 0.8})`);
+                    gradient.addColorStop(1, `rgba(255, 251, 36, ${alpha})`);
+                    
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = 3 * point.life;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+        
+        // Draw projectile particles (sparkles around projectile)
+        if (proj.particles && proj.particles.length > 0) {
+            proj.particles.forEach(part => {
+                ctx.save();
+                ctx.globalAlpha = part.life;
+                ctx.fillStyle = part.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = part.color;
+                ctx.beginPath();
+                ctx.arc(part.x, part.y, part.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+        
+        // Multi-layer glow for RapidFire
+        if (isRapidFire) {
+            // Outer glow
+            ctx.shadowBlur = 30 * glowIntensity;
+            ctx.shadowColor = proj.color;
+            ctx.fillStyle = proj.color;
+            ctx.globalAlpha = 0.6;
+            ctx.fillRect(proj.x - 2, proj.y - 2, proj.width + 4, proj.height + 4);
+            
+            // Middle glow
+            ctx.shadowBlur = 20 * glowIntensity;
+            ctx.globalAlpha = 0.8;
+            ctx.fillRect(proj.x - 1, proj.y - 1, proj.width + 2, proj.height + 2);
+        }
+        
+        // Main projectile body
         ctx.fillStyle = proj.color;
-        
-        // Add Glow effect for projectiles
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = isRapidFire ? 25 * glowIntensity : 15;
         ctx.shadowColor = proj.color;
-        
-        // Main beam
+        ctx.globalAlpha = 1.0;
         ctx.fillRect(proj.x, proj.y, proj.width, proj.height);
         
-        // Add a "core" to make it look like a laser/energy bolt
+        // Core (bright center)
         ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = isRapidFire ? 0.9 : 0.7;
+        ctx.shadowBlur = 0;
         ctx.fillRect(proj.x + 1, proj.y + 2, proj.width - 2, proj.height - 4);
-        ctx.globalAlpha = 1.0;
         
+        // Reset
+        ctx.globalAlpha = 1.0;
         ctx.shadowBlur = 0;
     });
 
@@ -1167,19 +1534,81 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       ctx.shadowBlur = 0;
     });
 
-    // 4. Draw PowerUps
+    // 4. Draw PowerUps with Enhanced Visuals
     state.powerUps.forEach(p => {
-        // Yellow for Multiball, Red for Rapid Fire
-        ctx.fillStyle = p.type === 'MULTIBALL' ? '#facc15' : '#ef4444'; 
+        const centerX = p.x + p.width / 2;
+        const centerY = p.y + p.height / 2;
+        const pulse = Math.sin(Date.now() / 200) * 0.2 + 1;
+        const radius = 12 * pulse;
+        
+        // Power-up colors and icons
+        let color = '#facc15';
+        let icon = 'x3';
+        let glowColor = '#facc15';
+        
+        switch (p.type) {
+            case 'MULTIBALL':
+                color = '#facc15';
+                glowColor = '#facc15';
+                icon = 'x3';
+                break;
+            case 'FAST_SHOOT':
+                color = '#ef4444';
+                glowColor = '#ff6b6b';
+                icon = '⚡';
+                break;
+            case 'SHIELD':
+                color = '#3b82f6';
+                glowColor = '#60a5fa';
+                icon = '🛡';
+                break;
+            case 'SLOW_MO':
+                color = '#8b5cf6';
+                glowColor = '#a78bfa';
+                icon = '⏱';
+                break;
+            case 'EXPLOSIVE_SHOT':
+                color = '#f97316';
+                glowColor = '#fb923c';
+                icon = '💣';
+                break;
+            case 'LASER_BEAM':
+                color = '#ec4899';
+                glowColor = '#f472b6';
+                icon = '🔺';
+                break;
+            case 'MULTI_SHOT':
+                color = '#10b981';
+                glowColor = '#34d399';
+                icon = '➶';
+                break;
+        }
+        
+        // Glow effect
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = glowColor;
+        ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(p.x + p.width/2, p.y + p.height/2, 12, 0, Math.PI*2);
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.fill();
         
+        // Inner circle
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+        
+        // Icon
         ctx.fillStyle = '#000';
-        ctx.font = 'bold 10px sans-serif';
-        const label = p.type === 'MULTIBALL' ? 'x3' : '⚡';
-        const offsetX = p.type === 'MULTIBALL' ? 5 : 4;
-        ctx.fillText(label, p.x + offsetX, p.y + 14);
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(icon, centerX, centerY);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
     });
 
     // 5. Draw Paddle (Rounded) with Animation
@@ -1282,6 +1711,43 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     }
     ctx.shadowBlur = 0;
 
+    // Draw Shield Effect
+    if (state.shieldTimer > 0) {
+        const shieldRadius = 40;
+        const shieldX = state.paddleX + state.paddleWidth / 2;
+        const shieldY = GAME_HEIGHT - 30 + PADDLE_HEIGHT / 2;
+        const pulse = Math.sin(Date.now() / 100) * 0.1 + 1;
+        
+        // Outer shield ring
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#60a5fa';
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.arc(shieldX, shieldY, shieldRadius * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Inner shield particles
+        for (let i = 0; i < 12; i++) {
+            const angle = (Math.PI * 2 * i) / 12 + Date.now() / 500;
+            const px = shieldX + Math.cos(angle) * (shieldRadius * 0.7);
+            const py = shieldY + Math.sin(angle) * (shieldRadius * 0.7);
+            
+            ctx.fillStyle = '#60a5fa';
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.arc(px, py, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
+    }
+
+    // Restore transform (screen shake)
+    ctx.restore();
+
     // 6. Draw Balls
     const ballImage = getBallImage();
     state.balls.forEach(ball => {
@@ -1365,6 +1831,19 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
               </span>
             </div>
           </div>
+          
+          {/* Combo Indicator */}
+          {gameStateRef.current.combo > 0 && (
+            <div className="glass-strong text-orange-100 px-4 py-2.5 rounded-xl border-2 border-orange-500/40 font-bold shadow-xl animate-pulse-glow">
+              <div className="flex items-center gap-2">
+                <span className="text-orange-300 text-sm">🔥</span>
+                <span className="text-sm md:text-base">COMBO:</span>
+                <span className="text-orange-200 text-lg md:text-xl font-mono">
+                  {gameStateRef.current.combo}x{gameStateRef.current.comboMultiplier}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Lives with Enhanced Display */}
@@ -1417,6 +1896,24 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
           {/* Glow effect */}
           <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-2xl -z-10 animate-pulse-glow"></div>
         </div>
+      )}
+      
+      {/* Screen Flash Overlay */}
+      {gameStateRef.current.screenFlash.intensity > 0 && (
+        <div 
+          className="absolute inset-0 pointer-events-none z-30"
+          style={{
+            backgroundColor: gameStateRef.current.screenFlash.color,
+            opacity: gameStateRef.current.screenFlash.intensity,
+            transition: 'opacity 0.1s',
+          }}
+        />
+      )}
+      
+      {/* Slow-mo Visual Effect */}
+      {gameStateRef.current.slowMoTimer > 0 && (
+        <div className="absolute inset-0 pointer-events-none z-25 border-4 border-purple-400/50 animate-pulse" 
+             style={{ boxShadow: 'inset 0 0 100px rgba(139, 92, 246, 0.3)' }} />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { ShopItem } from "./types";
+import { ShopItem, Achievement } from "./types";
 
 export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 600;
@@ -74,6 +74,14 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'skin_ball_ghost', name: 'Hayalet Küre', type: 'SKIN_BALL', price: 750, description: 'Yarı saydam ruhani iz.', value: SKINS.BALL.GHOST },
 ];
 
+export const ACHIEVEMENTS: Achievement[] = [
+  { id: 'combo_master', name: 'Combo Master', description: '50 combo yap', icon: '🔥', unlocked: false, progress: 0, target: 50 },
+  { id: 'power_collector', name: 'Power Collector', description: '10 power-up topla', icon: '⚡', unlocked: false, progress: 0, target: 10 },
+  { id: 'perfect_level', name: 'Perfect Level', description: 'Can kaybetmeden seviye tamamla', icon: '⭐', unlocked: false, progress: 0, target: 1 },
+  { id: 'speed_demon', name: 'Speed Demon', description: '30 saniyede seviye tamamla', icon: '⚡', unlocked: false, progress: 0, target: 1 },
+  { id: 'block_breaker', name: 'Block Breaker', description: '1000 blok kır', icon: '💥', unlocked: false, progress: 0, target: 1000 },
+];
+
 export const DEFAULT_SAVE_DATA = {
   currency: 10000,
   unlockedLevels: 1,
@@ -93,5 +101,14 @@ export const DEFAULT_SAVE_DATA = {
   settings: {
     musicVolume: 0.5,
     sfxVolume: 0.5,
+  },
+  achievements: {} as Record<string, Achievement>,
+  stats: {
+    totalBlocksBroken: 0,
+    totalPowerUpsCollected: 0,
+    totalCombos: 0,
+    maxCombo: 0,
+    perfectLevels: 0,
+    fastLevels: 0,
   },
 };

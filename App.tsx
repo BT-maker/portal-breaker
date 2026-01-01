@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Scene, SaveData } from './types';
-import { DEFAULT_SAVE_DATA } from './constants';
+import { Scene, SaveData, Achievement } from './types';
+import { DEFAULT_SAVE_DATA, ACHIEVEMENTS } from './constants';
 import { MenuScene } from './scenes/MenuScene';
 import { LevelSelectScene } from './scenes/LevelSelectScene';
 import { GameScene } from './scenes/GameScene';
@@ -10,7 +10,34 @@ import { LevelCompleteModal } from './components/LevelCompleteModal';
 const App: React.FC = () => {
   const [currentScene, setCurrentScene] = useState<Scene>(Scene.MENU);
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
-  const [saveData, setSaveData] = useState<SaveData>(DEFAULT_SAVE_DATA);
+  const [saveData, setSaveData] = useState<SaveData>(() => {
+    const stored = localStorage.getItem('blockBreakerSave');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        // Initialize achievements if not present
+        if (!parsed.achievements) {
+          parsed.achievements = {};
+          ACHIEVEMENTS.forEach(ach => {
+            parsed.achievements[ach.id] = { ...ach };
+          });
+        }
+        // Initialize stats if not present
+        if (!parsed.stats) {
+          parsed.stats = DEFAULT_SAVE_DATA.stats;
+        }
+        return { ...DEFAULT_SAVE_DATA, ...parsed };
+      } catch (e) {
+        console.error("Save file corrupted");
+      }
+    }
+    // Initialize achievements for new save
+    const achievements: Record<string, Achievement> = {};
+    ACHIEVEMENTS.forEach(ach => {
+      achievements[ach.id] = { ...ach };
+    });
+    return { ...DEFAULT_SAVE_DATA, achievements, stats: DEFAULT_SAVE_DATA.stats };
+  });
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     win: boolean;
@@ -22,17 +49,58 @@ const App: React.FC = () => {
     score: 0,
   });
 
-  // Load Save
-  useEffect(() => {
-    const stored = localStorage.getItem('blockBreakerSave');
-    if (stored) {
-      try {
-        setSaveData({ ...DEFAULT_SAVE_DATA, ...JSON.parse(stored) });
-      } catch (e) {
-        console.error("Save file corrupted");
+  // Achievement check function
+  const checkAchievements = (stats: SaveData['stats']) => {
+    const updatedAchievements = { ...saveData.achievements };
+    let unlockedNew = false;
+    
+    ACHIEVEMENTS.forEach(ach => {
+      const current = updatedAchievements[ach.id] || { ...ach };
+      if (current.unlocked) return;
+      
+      let progress = current.progress;
+      let unlocked = false;
+      
+      switch (ach.id) {
+        case 'combo_master':
+          progress = stats.maxCombo || 0;
+          unlocked = progress >= ach.target;
+          break;
+        case 'power_collector':
+          progress = stats.totalPowerUpsCollected || 0;
+          unlocked = progress >= ach.target;
+          break;
+        case 'perfect_level':
+          progress = stats.perfectLevels || 0;
+          unlocked = progress >= ach.target;
+          break;
+        case 'speed_demon':
+          progress = stats.fastLevels || 0;
+          unlocked = progress >= ach.target;
+          break;
+        case 'block_breaker':
+          progress = stats.totalBlocksBroken || 0;
+          unlocked = progress >= ach.target;
+          break;
       }
+      
+      if (unlocked && !current.unlocked) {
+        unlockedNew = true;
+        console.log(`Achievement Unlocked: ${ach.name}!`);
+      }
+      
+      updatedAchievements[ach.id] = { ...current, progress, unlocked };
+    });
+    
+    if (unlockedNew) {
+      setSaveData(prev => ({ ...prev, achievements: updatedAchievements }));
     }
-  }, []);
+  };
+  
+  const handleStatsUpdate = (stats: SaveData['stats']) => {
+    setSaveData(prev => ({ ...prev, stats }));
+    checkAchievements(stats);
+  };
 
   // Persist Save
   useEffect(() => {
@@ -181,6 +249,7 @@ const App: React.FC = () => {
                 saveData={saveData}
                 onGameOver={handleLevelComplete}
                 onExit={() => setCurrentScene(Scene.MENU)}
+                onStatsUpdate={handleStatsUpdate}
               />
             </div>
           )}

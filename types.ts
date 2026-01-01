@@ -55,6 +55,12 @@ export interface BallEntity {
   color: string;
 }
 
+export interface TrailPoint {
+  x: number;
+  y: number;
+  life: number;
+}
+
 export interface Projectile {
   id: string;
   x: number;
@@ -62,7 +68,12 @@ export interface Projectile {
   width: number;
   height: number;
   vy: number;
+  vx?: number; // Horizontal velocity for multi-shot
   color: string;
+  trail?: TrailPoint[]; // Trail noktaları
+  particles?: Particle[]; // Mermi etrafındaki partiküller
+  glowIntensity?: number; // Glow şiddeti (0-1)
+  effectType?: 'normal' | 'rapidfire' | 'explosive' | 'laser'; // Efekt tipi
 }
 
 export interface PowerUp {
@@ -72,7 +83,7 @@ export interface PowerUp {
   width: number;
   height: number;
   vy: number;
-  type: 'MULTIBALL' | 'FAST_SHOOT';
+  type: 'MULTIBALL' | 'FAST_SHOOT' | 'SHIELD' | 'SLOW_MO' | 'EXPLOSIVE_SHOT' | 'LASER_BEAM' | 'MULTI_SHOT';
 }
 
 export interface LevelData {
@@ -104,6 +115,15 @@ export interface SaveData {
     musicVolume: number;
     sfxVolume: number;
   };
+  achievements: Record<string, Achievement>; // achievementId -> Achievement
+  stats: {
+    totalBlocksBroken: number;
+    totalPowerUpsCollected: number;
+    totalCombos: number;
+    maxCombo: number;
+    perfectLevels: number;
+    fastLevels: number;
+  };
 }
 
 export interface ShopItem {
@@ -113,4 +133,14 @@ export interface ShopItem {
   price: number;
   description: string;
   value?: any; // e.g., color code or stat multiplier
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  progress: number;
+  target: number;
 }
