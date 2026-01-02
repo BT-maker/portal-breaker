@@ -1017,7 +1017,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     generateEffects(deltaTime); 
     draw();
 
-    const breakableBlocks = state.blocks.filter(b => b.type !== 'PORTAL');
+    const breakableBlocks = state.blocks.filter(b => b.type !== 'PORTAL' && b.type !== 'IRON');
     if (breakableBlocks.length === 0) {
       audioManager.playLevelComplete();
       
@@ -1180,11 +1180,17 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             proj.y < b.y + b.height &&
             proj.y + proj.height > b.y) {
             
-            // Hit!
-            b.hp--;
-            createParticles(proj.x, proj.y, proj.color, 3, 0.3, 3);
+            // Hit! (Iron blocks are unbreakable)
+            if (b.type !== 'IRON') {
+              b.hp--;
+              createParticles(proj.x, proj.y, proj.color, 3, 0.3, 3);
+            } else {
+              // Iron block hit effect - just bounce off
+              createParticles(proj.x, proj.y, '#525252', 3, 0.3, 3);
+              audioManager.playHit();
+            }
 
-            if (b.hp <= 0) {
+            if (b.hp <= 0 && b.type !== 'IRON') {
                 // Check Powerup
                 if (b.hasPowerUp) {
                     const powerUpTypes: PowerUp['type'][] = [
@@ -1232,14 +1238,14 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                         });
                     }
                     
-                    // Damage nearby blocks
+                    // Damage nearby blocks (iron blocks are immune)
                     for (let nearbyIdx = state.blocks.length - 1; nearbyIdx >= 0; nearbyIdx--) {
                         const nearbyBlock = state.blocks[nearbyIdx];
                         const dx = (nearbyBlock.x + nearbyBlock.width / 2) - explosionX;
                         const dy = (nearbyBlock.y + nearbyBlock.height / 2) - explosionY;
                         const dist = Math.sqrt(dx * dx + dy * dy);
                         
-                        if (dist < explosionRadius && nearbyBlock.type !== 'PORTAL') {
+                        if (dist < explosionRadius && nearbyBlock.type !== 'PORTAL' && nearbyBlock.type !== 'IRON') {
                             nearbyBlock.hp--;
                             if (nearbyBlock.hp <= 0) {
                                 createBlockDebris(nearbyBlock.x, nearbyBlock.y, nearbyBlock.color, nearbyBlock.width, nearbyBlock.height);
@@ -1445,18 +1451,30 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                       createParticles(b.x + b.width/2, b.y + b.height/2, '#f59e0b', 10, 0.8, 6);
                     }
                     
-                    // Normal Collision Logic (skip for bouncy as it's handled above)
-                    if (b.type !== 'BOUNCY') {
+                    // Normal Collision Logic (skip for bouncy as it's handled above, iron blocks just bounce)
+                    if (b.type !== 'BOUNCY' && b.type !== 'IRON') {
                       if (Math.abs(dx) > Math.abs(dy)) {
                           ball.vx *= -1;
                       } else {
                           ball.vy *= -1;
                       }
+                    } else if (b.type === 'IRON') {
+                      // Iron block - just bounce, no damage
+                      if (Math.abs(dx) > Math.abs(dy)) {
+                          ball.vx *= -1;
+                      } else {
+                          ball.vy *= -1;
+                      }
+                      createParticles(b.x + b.width/2, b.y + b.height/2, '#525252', 5, 0.5, 4);
+                      audioManager.playHit();
                     }
 
-                    b.hp--;
+                    // Iron blocks are unbreakable
+                    if (b.type !== 'IRON') {
+                      b.hp--;
+                    }
                     
-                    if (b.hp <= 0) {
+                    if (b.hp <= 0 && b.type !== 'IRON') {
                         // Check for PowerUp spawn
                         if (b.hasPowerUp) {
                             const powerUpTypes: PowerUp['type'][] = [
@@ -1754,6 +1772,14 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         if (b.type === 'ICE') {
           ctx.shadowBlur = 8;
           ctx.shadowColor = '#06b6d4';
+        }
+        if (b.type === 'IRON') {
+          ctx.shadowBlur = 5;
+          ctx.shadowColor = '#404040';
+          // Add metallic effect with darker border
+          ctx.strokeStyle = '#2a2a2a';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(b.x, b.y, b.width, b.height);
           const pulse = Math.sin(Date.now() / 300) * 0.1 + 1;
           ctx.globalAlpha = 0.8 + (b.hp / b.maxHp) * 0.2;
         }
@@ -1824,6 +1850,10 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
           ctx.fillStyle = '#ffffff';
           ctx.font = 'bold 8px sans-serif';
           ctx.fillText('⚡', b.x + b.width/2 - 4, b.y + b.height/2 + 3);
+        } else if (b.type === 'IRON') {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 8px sans-serif';
+          ctx.fillText('🛡', b.x + b.width/2 - 4, b.y + b.height/2 + 3);
         }
         
         ctx.globalAlpha = 1.0;

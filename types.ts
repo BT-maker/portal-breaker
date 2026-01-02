@@ -28,7 +28,7 @@ export interface Block {
   height: number;
   hp: number;
   maxHp: number;
-  type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' | 'BOSS';
+  type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' | 'BOSS' | 'IRON';
   color: string;
   hasPowerUp?: boolean;
   vx?: number; // For BOSS blocks movement

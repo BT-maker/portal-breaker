@@ -49,6 +49,8 @@ export function generateLevel(levelNum: number): LevelData {
   // New block type chances (only appear after level 5)
   const iceChance = levelNum > 5 ? 0.03 : 0;
   const bouncyChance = levelNum > 10 ? 0.02 : 0;
+  // Iron blocks start appearing from level 11, gradually increasing
+  const ironChance = levelNum >= 11 ? Math.min(0.15, 0.02 + ((levelNum - 11) * 0.003)) : 0;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -83,16 +85,19 @@ export function generateLevel(levelNum: number): LevelData {
         let hp = Math.max(1, baseHp);
         
         // Determine block type based on level and chance
-        let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' = 'NORMAL';
+        let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' | 'IRON' = 'NORMAL';
         
         const rand = Math.random();
         
-        // Other block types
-        if (rand < bouncyChance) {
+        // Other block types - Iron blocks are checked first (they're unbreakable)
+        if (rand < ironChance) {
+          type = 'IRON';
+          hp = 9999; // Unbreakable
+        } else if (rand < ironChance + bouncyChance) {
           type = 'BOUNCY';
-        } else if (rand < bouncyChance + iceChance) {
+        } else if (rand < ironChance + bouncyChance + iceChance) {
           type = 'ICE';
-        } else if (rand < bouncyChance + iceChance + explosiveChance) {
+        } else if (rand < ironChance + bouncyChance + iceChance + explosiveChance) {
           type = 'EXPLOSIVE';
         } else if (hp >= 3 || Math.random() < hardBlockChance) {
           type = 'HARD';
@@ -109,6 +114,7 @@ export function generateLevel(levelNum: number): LevelData {
           type,
           color: type === 'ICE' ? '#06b6d4' : 
                  type === 'BOUNCY' ? '#f59e0b' :
+                 type === 'IRON' ? '#525252' : // Dark gray for iron
                  COLORS[(r + c) % COLORS.length],
           hasPowerUp: Math.random() < 0.1
         };
@@ -187,6 +193,8 @@ export function generateBossLevel(levelNum: number): LevelData {
   const explosiveChance = 0.02;
   const iceChance = levelNum > 5 ? 0.03 : 0;
   const bouncyChance = levelNum > 10 ? 0.02 : 0;
+  // Iron blocks start appearing from level 11, gradually increasing
+  const ironChance = levelNum >= 11 ? Math.min(0.15, 0.02 + ((levelNum - 11) * 0.003)) : 0;
   
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -210,14 +218,18 @@ export function generateBossLevel(levelNum: number): LevelData {
       // Create block
       const baseHp = Math.ceil(Math.random() * (1 + Math.floor(levelNum / 7)));
       let hp = Math.max(1, baseHp);
-      let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' = 'NORMAL';
+      let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' | 'IRON' = 'NORMAL';
       
       const rand = Math.random();
-      if (rand < bouncyChance) {
+      // Iron blocks are checked first (they're unbreakable)
+      if (rand < ironChance) {
+        type = 'IRON';
+        hp = 9999; // Unbreakable
+      } else if (rand < ironChance + bouncyChance) {
         type = 'BOUNCY';
-      } else if (rand < bouncyChance + iceChance) {
+      } else if (rand < ironChance + bouncyChance + iceChance) {
         type = 'ICE';
-      } else if (rand < bouncyChance + iceChance + explosiveChance) {
+      } else if (rand < ironChance + bouncyChance + iceChance + explosiveChance) {
         type = 'EXPLOSIVE';
       } else if (hp >= 3 || Math.random() < hardBlockChance) {
         type = 'HARD';
@@ -234,6 +246,7 @@ export function generateBossLevel(levelNum: number): LevelData {
         type,
         color: type === 'ICE' ? '#06b6d4' : 
                type === 'BOUNCY' ? '#f59e0b' :
+               type === 'IRON' ? '#525252' : // Dark gray for iron
                COLORS[(r + c) % COLORS.length],
         hasPowerUp: Math.random() < 0.1
       };
