@@ -397,10 +397,25 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
     // PowerUp Overrides
     const isRapidFire = state.rapidFireTimer > 0;
+    const isExplosiveShot = state.explosiveShotTimer > 0;
+    const isLaserBeam = state.laserBeamTimer > 0;
+    
     if (isRapidFire) {
         shotConfig.cooldown = 100; // Super fast
         shotConfig.color = '#ffffff'; // White hot
         shotConfig.speed += 4;
+    }
+    
+    if (isExplosiveShot) {
+        shotConfig.color = '#ff6b00'; // Orange for explosive
+        shotConfig.width += 2;
+        shotConfig.height += 4;
+    }
+    
+    if (isLaserBeam) {
+        shotConfig.color = '#ec4899'; // Pink for laser
+        shotConfig.cooldown = 150; // Fast but not as fast as rapid fire
+        shotConfig.speed += 2;
     }
 
     if (now - state.lastShotTime < shotConfig.cooldown) return;
@@ -408,6 +423,11 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
     // Helper to create projectile with effects
     const createProjectile = (x: number, y: number) => {
+      let effectType: 'normal' | 'rapidfire' | 'explosive' | 'laser' = 'normal';
+      if (isRapidFire) effectType = 'rapidfire';
+      else if (isExplosiveShot) effectType = 'explosive';
+      else if (isLaserBeam) effectType = 'laser';
+      
       const proj: Projectile = {
         id: Math.random().toString(),
         x,
@@ -416,8 +436,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         height: shotConfig.height,
         vy: -shotConfig.speed,
         color: shotConfig.color,
-        effectType: isRapidFire ? 'rapidfire' : 'normal',
-        glowIntensity: isRapidFire ? 1.0 : 0.5,
+        effectType: effectType,
+        glowIntensity: isRapidFire ? 1.0 : (isLaserBeam || isExplosiveShot ? 0.8 : 0.5),
         trail: [],
         particles: []
       };
@@ -467,6 +487,11 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     // Multi-shot: fire additional projectiles in an arc
     if (state.multiShotTimer > 0) {
         const angles = [-0.3, -0.15, 0.15, 0.3];
+        let multiEffectType: 'normal' | 'rapidfire' | 'explosive' | 'laser' = 'normal';
+        if (isRapidFire) multiEffectType = 'rapidfire';
+        else if (isExplosiveShot) multiEffectType = 'explosive';
+        else if (isLaserBeam) multiEffectType = 'laser';
+        
         angles.forEach((angle) => {
             const multiProj: Projectile = {
                 id: Math.random().toString(),
@@ -477,8 +502,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                 vy: -shotConfig.speed * Math.cos(angle),
                 vx: shotConfig.speed * Math.sin(angle),
                 color: shotConfig.color,
-                effectType: 'normal',
-                glowIntensity: 0.6,
+                effectType: multiEffectType,
+                glowIntensity: isRapidFire ? 1.0 : (isLaserBeam || isExplosiveShot ? 0.8 : 0.6),
             };
             state.projectiles.push(multiProj);
         });
@@ -893,17 +918,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
     // --- CONTINUOUS FIRE LOGIC ---
     if (state.started && state.isMouseDown) {
-        // Laser beam: continuous fire
-        if (state.laserBeamTimer > 0) {
-            // Fire every frame when laser is active
-            if (state.frameCount % 2 === 0) {
-                fireGuns();
-            }
-        } else {
-            fireGuns();
-        }
-        
-        // Multi-shot: fire multiple projectiles (handled in fireGuns)
+        // Normal fire logic - works for all power-ups including explosive shot and laser beam
+        fireGuns();
     }
 
     // Slow-mo effect: adjust update rate
