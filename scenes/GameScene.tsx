@@ -27,9 +27,15 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
   const imageCacheRef = useRef<{
     paddles: Map<string, HTMLImageElement | null>;
     balls: Map<string, HTMLImageElement | null>;
+    korsanPaddle: HTMLImageElement | null;
+    korsanBg: HTMLImageElement | null;
+    korsanBoss: HTMLImageElement | null;
   }>({
     paddles: new Map(),
     balls: new Map(),
+    korsanPaddle: null,
+    korsanBg: null,
+    korsanBoss: null,
   });
   
   // Game State Refs
@@ -151,6 +157,44 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     Object.entries(BALL_IMAGES).forEach(([key, path]) => {
       loadImage(path, imageCacheRef.current.balls, key);
     });
+
+    // Load korsan theme images (for levels 1-10)
+    const korsanPaddleImg = new Image();
+    korsanPaddleImg.onload = () => {
+      imageCacheRef.current.korsanPaddle = korsanPaddleImg;
+    };
+    korsanPaddleImg.onerror = () => {
+      imageCacheRef.current.korsanPaddle = null;
+    };
+    const korsanPaddleUrl = window.location.pathname.includes('/portal-breaker/') 
+      ? '/portal-breaker/assets/korsan/korsan-paddle.png'
+      : '/assets/korsan/korsan-paddle.png';
+    korsanPaddleImg.src = korsanPaddleUrl;
+
+    const korsanBgImg = new Image();
+    korsanBgImg.onload = () => {
+      imageCacheRef.current.korsanBg = korsanBgImg;
+    };
+    korsanBgImg.onerror = () => {
+      imageCacheRef.current.korsanBg = null;
+    };
+    const korsanBgUrl = window.location.pathname.includes('/portal-breaker/') 
+      ? '/portal-breaker/assets/korsan/korsan-bg.jpeg'
+      : '/assets/korsan/korsan-bg.jpeg';
+    korsanBgImg.src = korsanBgUrl;
+
+    // Load korsan boss image (for level 10)
+    const korsanBossImg = new Image();
+    korsanBossImg.onload = () => {
+      imageCacheRef.current.korsanBoss = korsanBossImg;
+    };
+    korsanBossImg.onerror = () => {
+      imageCacheRef.current.korsanBoss = null;
+    };
+    const korsanBossUrl = window.location.pathname.includes('/portal-breaker/') 
+      ? '/portal-breaker/assets/korsan/korsan-boss.png'
+      : '/assets/korsan/korsan-boss.png';
+    korsanBossImg.src = korsanBossUrl;
   }, []);
 
   // Init Level
@@ -1465,6 +1509,11 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     ctx.translate(state.screenShake.x, state.screenShake.y);
 
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    
+    // Draw background for korsan theme (levels 1-10)
+    if (levelNum <= 10 && imageCacheRef.current.korsanBg && imageCacheRef.current.korsanBg.complete) {
+      ctx.drawImage(imageCacheRef.current.korsanBg, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
 
     const paddleSkinId = saveData.equipped.paddleSkin;
 
@@ -1602,19 +1651,54 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         // Boss block special rendering
         ctx.shadowBlur = 20;
         ctx.shadowColor = '#dc2626';
-        const bossPulse = Math.sin(Date.now() / 150) * 0.15 + 1;
         ctx.save();
         ctx.translate(b.x + b.width/2, b.y + b.height/2);
-        ctx.scale(bossPulse, bossPulse);
+        // No pulse animation - boss stays fixed size
         
-        // Boss block body
-        ctx.fillStyle = b.color;
-        if (ctx.roundRect) {
-          ctx.beginPath();
-          ctx.roundRect(-b.width/2, -b.height/2, b.width, b.height, b.height/2);
-          ctx.fill();
+        // Use korsan boss image for level 10
+        const bossImage = (levelNum === 10 && imageCacheRef.current.korsanBoss && imageCacheRef.current.korsanBoss.complete)
+          ? imageCacheRef.current.korsanBoss
+          : null;
+        
+        if (bossImage) {
+          // Draw korsan boss image - maintain aspect ratio, center it
+          const imgAspect = bossImage.naturalWidth / bossImage.naturalHeight;
+          const bossAspect = b.width / b.height;
+          
+          let drawWidth = b.width;
+          let drawHeight = b.height;
+          let drawX = -b.width/2;
+          let drawY = -b.height/2;
+          
+          // Maintain aspect ratio
+          if (imgAspect > bossAspect) {
+            // Image is wider, fit to height
+            drawHeight = b.height;
+            drawWidth = drawHeight * imgAspect;
+            drawX = -drawWidth / 2;
+          } else {
+            // Image is taller, fit to width
+            drawWidth = b.width;
+            drawHeight = drawWidth / imgAspect;
+            drawY = -drawHeight / 2;
+          }
+          
+          ctx.drawImage(bossImage, drawX, drawY, drawWidth, drawHeight);
         } else {
-          ctx.fillRect(-b.width/2, -b.height/2, b.width, b.height);
+          // Boss block body (fallback)
+          ctx.fillStyle = b.color;
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(-b.width/2, -b.height/2, b.width, b.height, b.height/2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(-b.width/2, -b.height/2, b.width, b.height);
+          }
+          
+          // Boss icon
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 20px sans-serif';
+          ctx.fillText('👹', -10, 5);
         }
         
         // Boss HP bar
@@ -1624,11 +1708,6 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
         ctx.strokeRect(-b.width/2, -b.height/2 - 8, b.width, 4);
-        
-        // Boss icon
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.fillText('👹', -10, 5);
         
         ctx.restore();
       } else {
@@ -1774,7 +1853,13 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const pX = state.paddleX - (pWidth - state.paddleWidth) / 2;
     const pY = (GAME_HEIGHT - 30) + (PADDLE_HEIGHT - pHeight);
 
-    const paddleImage = getPaddleImage();
+    // Use korsan paddle for levels 1-10, otherwise use normal paddle
+    let paddleImage: HTMLImageElement | null = null;
+    if (levelNum <= 10 && imageCacheRef.current.korsanPaddle && imageCacheRef.current.korsanPaddle.complete) {
+      paddleImage = imageCacheRef.current.korsanPaddle;
+    } else {
+      paddleImage = getPaddleImage();
+    }
     const paddleColor = getPaddleColor();
     
     ctx.shadowBlur = 15;

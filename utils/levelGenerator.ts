@@ -157,22 +157,98 @@ export function generateBossLevel(levelNum: number): LevelData {
   const blocks: Block[] = [];
   const bossLevel = Math.floor(levelNum / 10) * 10; // 10, 20, 30, etc.
   
-  // Create a boss level with fewer normal blocks and a boss block
-  const normalLevel = generateLevel(levelNum);
-  blocks.push(...normalLevel.blocks.filter(b => b.type !== 'PORTAL'));
+  // Calculate block size first
+  const cols = Math.min(34, 10 + Math.ceil(levelNum * 0.48));
+  const totalBlockWidth = GAME_WIDTH - 60; // 30px padding sides
+  const blockWidth = (totalBlockWidth - (cols - 1) * BLOCK_PADDING) / cols;
+  const blockHeight = 12;
+  const startX = 30;
+  const startY = 60;
   
-  // Add boss block in the center-top
-  const bossSize = 80;
-  const bossX = GAME_WIDTH / 2 - bossSize / 2;
+  // Calculate rows first (needed for boss area calculation)
+  const maxRows = Math.floor((GAME_HEIGHT - 90) / (blockHeight + BLOCK_PADDING));
+  const rows = Math.min(maxRows, 8 + Math.ceil(levelNum * 0.48));
+  
+  // Boss dimensions (4 blocks wide, 2 blocks tall - reduced from 6x3)
+  const bossWidth = blockWidth * 4 + BLOCK_PADDING * 3;
+  const bossHeight = blockHeight * 2 + BLOCK_PADDING * 1;
+  const bossX = GAME_WIDTH / 2 - bossWidth / 2;
   const bossY = 80;
   const bossHp = 20 + (bossLevel / 10) * 10; // 20, 30, 40, etc.
   
+  // Calculate which grid cells boss occupies - with margin to ensure no blocks behind
+  const bossLeftCol = Math.max(0, Math.floor((bossX - startX - blockWidth) / (blockWidth + BLOCK_PADDING)));
+  const bossRightCol = Math.min(cols, Math.ceil((bossX + bossWidth - startX + blockWidth) / (blockWidth + BLOCK_PADDING)));
+  const bossTopRow = Math.max(0, Math.floor((bossY - startY - blockHeight) / (blockHeight + BLOCK_PADDING)));
+  const bossBottomRow = Math.min(rows, Math.ceil((bossY + bossHeight - startY + blockHeight) / (blockHeight + BLOCK_PADDING)));
+  
+  // Generate blocks around boss - exclude boss area
+  const hardBlockChance = Math.min(0.4, 0.05 + (levelNum * 0.007));
+  const explosiveChance = 0.02;
+  const iceChance = levelNum > 5 ? 0.03 : 0;
+  const bouncyChance = levelNum > 10 ? 0.02 : 0;
+  
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      // Calculate block position
+      const blockX = startX + c * (blockWidth + BLOCK_PADDING);
+      const blockY = startY + r * (blockHeight + BLOCK_PADDING);
+      const blockRight = blockX + blockWidth;
+      const blockBottom = blockY + blockHeight;
+      
+      // Skip blocks that overlap with boss area (with margin)
+      const bossLeft = bossX - blockWidth;
+      const bossRight = bossX + bossWidth + blockWidth;
+      const bossTop = bossY - blockHeight;
+      const bossBottom = bossY + bossHeight + blockHeight;
+      
+      if (blockRight > bossLeft && blockX < bossRight && 
+          blockBottom > bossTop && blockY < bossBottom) {
+        continue;
+      }
+      
+      // Create block
+      const baseHp = Math.ceil(Math.random() * (1 + Math.floor(levelNum / 7)));
+      let hp = Math.max(1, baseHp);
+      let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' = 'NORMAL';
+      
+      const rand = Math.random();
+      if (rand < bouncyChance) {
+        type = 'BOUNCY';
+      } else if (rand < bouncyChance + iceChance) {
+        type = 'ICE';
+      } else if (rand < bouncyChance + iceChance + explosiveChance) {
+        type = 'EXPLOSIVE';
+      } else if (hp >= 3 || Math.random() < hardBlockChance) {
+        type = 'HARD';
+      }
+      
+      const block: Block = {
+        id: `b_${r}_${c}`,
+        x: startX + c * (blockWidth + BLOCK_PADDING),
+        y: startY + r * (blockHeight + BLOCK_PADDING),
+        width: blockWidth,
+        height: blockHeight,
+        hp: (type === 'EXPLOSIVE') ? 1 : hp,
+        maxHp: hp,
+        type,
+        color: type === 'ICE' ? '#06b6d4' : 
+               type === 'BOUNCY' ? '#f59e0b' :
+               COLORS[(r + c) % COLORS.length],
+        hasPowerUp: Math.random() < 0.1
+      };
+      
+      blocks.push(block);
+    }
+  }
+  
+  // Add boss block
   const bossBlock: Block = {
     id: 'boss_' + bossLevel,
     x: bossX,
     y: bossY,
-    width: bossSize,
-    height: bossSize / 2,
+    width: bossWidth,
+    height: bossHeight,
     hp: bossHp,
     maxHp: bossHp,
     type: 'BOSS',
@@ -184,8 +260,8 @@ export function generateBossLevel(levelNum: number): LevelData {
   
   return {
     levelNumber: levelNum,
-    rows: normalLevel.rows,
-    cols: normalLevel.cols,
+    rows: rows,
+    cols: cols,
     blocks,
     portals: [],
     speedMultiplier: 1 + (levelNum * 0.02)
