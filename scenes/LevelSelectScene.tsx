@@ -13,9 +13,9 @@ export const LevelSelectScene: React.FC<LevelSelectSceneProps> = ({ changeScene,
   const levels = Array.from({ length: 50 }, (_, i) => i + 1);
 
   return (
-    <div className="flex flex-col h-full p-6 md:p-8 relative animate-fade-in">
+    <div className="flex flex-col h-full relative animate-fade-in">
       {/* Enhanced Header */}
-      <div className="flex items-center justify-between mb-6 md:mb-8 z-10 animate-slide-down">
+      <div className="flex-none px-4 md:px-6 pt-4 md:pt-6 pb-2 md:pb-3 flex items-center justify-between z-10 animate-slide-down">
         <Button 
           onClick={() => changeScene(Scene.MENU)} 
           variant="secondary" 
@@ -34,8 +34,8 @@ export const LevelSelectScene: React.FC<LevelSelectSceneProps> = ({ changeScene,
       </div>
 
       {/* Enhanced Grid with Staggered Animations */}
-      <div className="flex-1 overflow-y-auto pr-2 z-10 custom-scrollbar">
-        <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-3 md:gap-4">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 pt-6 md:pt-6 pb-4 md:pb-6 z-10 custom-scrollbar">
+        <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-2 md:gap-3 w-full">
           {levels.map((level, index) => {
             const isUnlocked = level <= unlockedLevels;
             const stars = levelStars[level] || 0;
@@ -92,25 +92,26 @@ export const LevelSelectScene: React.FC<LevelSelectSceneProps> = ({ changeScene,
                     ))}
                   </div>
                 )}
-                
-                {/* Lock Overlay with Enhanced Effect */}
+
+                {/* Lock Icon - Top Right Corner */}
+                <div className="absolute top-1 right-1 md:top-2 md:right-2 z-10">
+                  {!isUnlocked ? (
+                    // Locked - Closed Lock
+                    <span className="text-slate-500/70 text-base md:text-lg drop-shadow-lg">🔒</span>
+                  ) : isCompleted ? (
+                    // Unlocked and Completed - Open Lock
+                    <span className="text-emerald-400/80 text-base md:text-lg drop-shadow-lg">🔓</span>
+                  ) : null}
+                </div>
+
+                {/* Lock Overlay for Locked Levels */}
                 {!isUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-2xl backdrop-blur-sm">
-                    <div className="relative">
-                      <span className="text-slate-500/70 text-xl md:text-2xl drop-shadow-lg">🔒</span>
-                      <div className="absolute inset-0 text-slate-500/30 blur-md">🔒</div>
-                    </div>
-                  </div>
+                  <div className="absolute inset-0 bg-black/50 rounded-2xl backdrop-blur-sm"></div>
                 )}
 
                 {/* Shine Effect on Hover */}
                 {isUnlocked && (
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                )}
-
-                {/* Completion Badge */}
-                {isCompleted && (
-                  <div className="absolute top-1 right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse shadow-lg shadow-yellow-400/50"></div>
                 )}
               </button>
             );

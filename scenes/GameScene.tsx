@@ -1853,19 +1853,6 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
               </span>
             </div>
           </div>
-          
-          {/* Combo Indicator */}
-          {gameStateRef.current.combo > 0 && (
-            <div className="glass-strong text-orange-100 px-4 py-2.5 rounded-xl border-2 border-orange-500/40 font-bold shadow-xl animate-pulse-glow">
-              <div className="flex items-center gap-2">
-                <span className="text-orange-300 text-sm">🔥</span>
-                <span className="text-sm md:text-base">COMBO:</span>
-                <span className="text-orange-200 text-lg md:text-xl font-mono">
-                  {gameStateRef.current.combo}x{gameStateRef.current.comboMultiplier}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
         
         {/* Lives with Enhanced Display */}
@@ -1898,14 +1885,44 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         </Button>
       </div>
 
-      {/* Enhanced Game Canvas */}
-      <canvas
-        ref={canvasRef}
-        width={GAME_WIDTH}
-        height={GAME_HEIGHT}
-        className="bg-[#022c22] rounded-xl shadow-[0_0_40px_rgba(20,184,166,0.4)] border-2 border-teal-700/50 cursor-none max-w-full max-h-[80vh] touch-none animate-scale-in"
-        style={{ touchAction: 'none', userSelect: 'none' }}
-      />
+      {/* Canvas Wrapper */}
+      <div className="relative">
+        {/* Enhanced Game Canvas */}
+        <canvas
+          ref={canvasRef}
+          width={GAME_WIDTH}
+          height={GAME_HEIGHT}
+          className="bg-[#022c22] rounded-xl shadow-[0_0_40px_rgba(20,184,166,0.4)] border-2 border-teal-700/50 cursor-none max-w-full max-h-[80vh] touch-none animate-scale-in"
+          style={{ touchAction: 'none', userSelect: 'none' }}
+        />
+        
+        {/* Combo Indicator - Vertical on Right Side */}
+        {gameStateRef.current.combo > 0 && (
+          <div className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-full ml-4 z-20">
+            <div className="glass-strong text-orange-100 px-3 py-4 rounded-xl border-2 border-orange-500/40 font-bold shadow-xl animate-pulse-glow">
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-orange-300 text-lg">🔥</span>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-orange-200 text-[10px] md:text-xs uppercase tracking-widest">C</span>
+                  <span className="text-orange-200 text-[10px] md:text-xs uppercase tracking-widest">O</span>
+                  <span className="text-orange-200 text-[10px] md:text-xs uppercase tracking-widest">M</span>
+                  <span className="text-orange-200 text-[10px] md:text-xs uppercase tracking-widest">B</span>
+                  <span className="text-orange-200 text-[10px] md:text-xs uppercase tracking-widest">O</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 mt-1">
+                  <span className="text-orange-200 text-xl md:text-2xl font-mono font-black">
+                    {gameStateRef.current.combo}
+                  </span>
+                  <span className="text-orange-300 text-sm">x</span>
+                  <span className="text-orange-200 text-lg md:text-xl font-mono font-black">
+                    {gameStateRef.current.comboMultiplier}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       
       {/* Enhanced Start Prompt */}
       {!gameStateRef.current.started && (
