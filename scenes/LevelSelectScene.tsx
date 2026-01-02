@@ -1,16 +1,19 @@
-import React from 'react';
-import { Scene } from '../types';
+import React, { useState } from 'react';
+import { Scene, SaveData } from '../types';
 import { Button } from '../components/Button';
+import { LevelStatsModal } from '../components/LevelStatsModal';
 
 interface LevelSelectSceneProps {
   changeScene: (scene: Scene) => void;
   unlockedLevels: number;
   levelStars: Record<number, number>;
   onSelectLevel: (level: number) => void;
+  saveData: SaveData;
 }
 
-export const LevelSelectScene: React.FC<LevelSelectSceneProps> = ({ changeScene, unlockedLevels, levelStars, onSelectLevel }) => {
-  const levels = Array.from({ length: 50 }, (_, i) => i + 1);
+export const LevelSelectScene: React.FC<LevelSelectSceneProps> = ({ changeScene, unlockedLevels, levelStars, onSelectLevel, saveData }) => {
+  const levels = Array.from({ length: 100 }, (_, i) => i + 1);
+  const [selectedStatsLevel, setSelectedStatsLevel] = useState<number | null>(null);
 
   return (
     <div className="flex flex-col h-full relative animate-fade-in">
@@ -35,7 +38,7 @@ export const LevelSelectScene: React.FC<LevelSelectSceneProps> = ({ changeScene,
 
       {/* Enhanced Grid with Staggered Animations */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 pt-6 md:pt-6 pb-4 md:pb-6 z-10 custom-scrollbar">
-        <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-2 md:gap-3 w-full">
+        <div className="grid grid-cols-10 gap-2 md:gap-3 w-full">
           {levels.map((level, index) => {
             const isUnlocked = level <= unlockedLevels;
             const stars = levelStars[level] || 0;
@@ -45,7 +48,14 @@ export const LevelSelectScene: React.FC<LevelSelectSceneProps> = ({ changeScene,
               <button
                 key={level}
                 disabled={!isUnlocked}
-                onClick={() => onSelectLevel(level)}
+                onClick={(e) => {
+                  if (e.detail === 2 || e.ctrlKey) {
+                    // Double click or Ctrl+click for stats
+                    setSelectedStatsLevel(level);
+                  } else {
+                    onSelectLevel(level);
+                  }
+                }}
                 className={`
                   aspect-square rounded-2xl flex flex-col items-center justify-center relative
                   transition-all duration-300 border-2 overflow-hidden group

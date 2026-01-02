@@ -5,7 +5,13 @@ import { MenuScene } from './scenes/MenuScene';
 import { LevelSelectScene } from './scenes/LevelSelectScene';
 import { GameScene } from './scenes/GameScene';
 import { ShopScene } from './scenes/ShopScene';
+import { SettingsScene } from './scenes/SettingsScene';
+import { AchievementScene } from './scenes/AchievementScene';
+import { DailyChallengeScene } from './scenes/DailyChallengeScene';
 import { LevelCompleteModal } from './components/LevelCompleteModal';
+import { DailyRewardModal } from './components/DailyRewardModal';
+import { DailyChallenge } from './utils/dailyChallengeGenerator';
+import { audioManager } from './utils/audio';
 
 const App: React.FC = () => {
   const [currentScene, setCurrentScene] = useState<Scene>(Scene.MENU);
@@ -47,6 +53,14 @@ const App: React.FC = () => {
     isOpen: false,
     win: false,
     score: 0,
+  });
+  
+  const [dailyRewardState, setDailyRewardState] = useState<{
+    isOpen: boolean;
+    reward: { day: number; amount: number; isStreak: boolean } | null;
+  }>({
+    isOpen: false,
+    reward: null,
   });
 
   // Achievement check function
@@ -107,7 +121,51 @@ const App: React.FC = () => {
     localStorage.setItem('blockBreakerSave', JSON.stringify(saveData));
   }, [saveData]);
 
-  const handleLevelComplete = (score: number, win: boolean, lives?: number) => {
+  // Check daily reward on mount - only once
+  useEffect(() => {
+    // Only check if we're on menu scene to avoid interrupting gameplay
+    if (currentScene !== Scene.MENU) return;
+    
+    const today = new Date().toDateString();
+    const lastClaimDate = saveData.dailyRewards?.lastClaimDate || '';
+    
+    // If already claimed today, don't show
+    if (lastClaimDate === today) return;
+    
+    // Check if streak continues or resets
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    
+    let newStreak = 1;
+    let isStreak = false;
+    
+    if (lastClaimDate === yesterdayStr) {
+      // Continue streak
+      newStreak = (saveData.dailyRewards?.streak || 0) + 1;
+      isStreak = true;
+    }
+    
+    // Calculate reward
+    const baseReward = 50;
+    const streakBonus = newStreak >= 7 ? 200 : 0; // Weekly bonus
+    const rewardAmount = baseReward + (newStreak - 1) * 10 + streakBonus;
+    
+    setDailyRewardState({
+      isOpen: true,
+      reward: {
+        day: newStreak >= 7 ? 7 : newStreak,
+        amount: rewardAmount,
+        isStreak: newStreak >= 7,
+      }
+    });
+  }, [currentScene]); // Only run when scene changes to MENU
+
+  const handleLevelComplete = (score: number, win: boolean, lives?: number, levelStats?: {
+    time: number;
+    blocksBroken: number;
+    powerUpsCollected: number;
+  }) => {
     if (win) {
       // Calculate Reward based on level and stars
       const stars = Math.min(3, lives || 1);
@@ -128,6 +186,8 @@ const App: React.FC = () => {
         multiplier = 4.5; // 4.5x for levels 31-40 (3 * 1.5)
       } else if (selectedLevel >= 41 && selectedLevel <= 50) {
         multiplier = 6.75; // 6.75x for levels 41-50 (4.5 * 1.5)
+      } else if (selectedLevel >= 51 && selectedLevel <= 100) {
+        multiplier = 10; // 10x for levels 51-100
       }
       
       const reward = Math.floor(baseRewards[stars as keyof typeof baseRewards] * multiplier);
@@ -136,7 +196,28 @@ const App: React.FC = () => {
         const newUnlocked = Math.max(prev.unlockedLevels, selectedLevel + 1);
         const currentStars = prev.levelStars[selectedLevel] || 0;
         // Star logic: based on remaining lives (3 lives = 3 stars, 2 lives = 2 stars, 1 life = 1 star)
-        const newStars = Math.max(currentStars, stars); 
+        const newStars = Math.max(currentStars, stars);
+        
+        // Update level stats
+        const currentLevelStats = prev.levelStats[selectedLevel] || {
+          bestScore: 0,
+          bestTime: 0,
+          bestLives: 0,
+          timesPlayed: 0,
+          blocksBroken: 0,
+          powerUpsCollected: 0,
+        };
+        
+        const newLevelStats = {
+          bestScore: Math.max(currentLevelStats.bestScore, score),
+          bestTime: currentLevelStats.bestTime === 0 || (levelStats && levelStats.time < currentLevelStats.bestTime) 
+            ? (levelStats?.time || 0) 
+            : currentLevelStats.bestTime,
+          bestLives: Math.max(currentLevelStats.bestLives, lives || 0),
+          timesPlayed: currentLevelStats.timesPlayed + 1,
+          blocksBroken: currentLevelStats.blocksBroken + (levelStats?.blocksBroken || 0),
+          powerUpsCollected: currentLevelStats.powerUpsCollected + (levelStats?.powerUpsCollected || 0),
+        };
         
         return {
           ...prev,
@@ -145,6 +226,10 @@ const App: React.FC = () => {
           levelStars: {
             ...prev.levelStars,
             [selectedLevel]: newStars
+          },
+          levelStats: {
+            ...prev.levelStats,
+            [selectedLevel]: newLevelStats
           }
         };
       });
@@ -204,6 +289,27 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleUpdateSettings = (settings: Partial<SaveData['settings'] & { language: 'TR' | 'EN'; graphicsQuality: 'LOW' | 'MEDIUM' | 'HIGH'; fullscreen: boolean; playerName: string }>) => {
+    // Update audio manager volumes immediately
+    if (settings.sfxVolume !== undefined) {
+      audioManager.setSFXVolume(settings.sfxVolume);
+    }
+    if (settings.musicVolume !== undefined) {
+      audioManager.setMusicVolume(settings.musicVolume);
+    }
+    
+    setSaveData(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        ...(settings.musicVolume !== undefined && { musicVolume: settings.musicVolume }),
+        ...(settings.sfxVolume !== undefined && { sfxVolume: settings.sfxVolume }),
+      },
+      ...(settings.fullscreen !== undefined && { fullscreen: settings.fullscreen }),
+      ...(settings.playerName && { playerName: settings.playerName }),
+    }));
+  };
+
   return (
     <div className="w-full h-screen bg-teal-950 text-white overflow-hidden bg-[url('https://picsum.photos/1920/1080?blur=5')] bg-cover bg-center bg-no-repeat relative">
       {/* Enhanced Dark Teal Overlay with Gradient */}
@@ -243,6 +349,7 @@ const App: React.FC = () => {
                 changeScene={setCurrentScene} 
                 unlockedLevels={saveData.unlockedLevels}
                 levelStars={saveData.levelStars}
+                saveData={saveData}
                 onSelectLevel={(lvl) => {
                   setSelectedLevel(lvl);
                   setCurrentScene(Scene.GAME);
@@ -270,9 +377,49 @@ const App: React.FC = () => {
                 onGameOver={handleLevelComplete}
                 onExit={() => setCurrentScene(Scene.MENU)}
                 onStatsUpdate={handleStatsUpdate}
+                onGoldCollected={(amount) => {
+                  setSaveData(prev => ({
+                    ...prev,
+                    currency: prev.currency + amount
+                  }));
+                }}
               />
             </div>
           )}
+
+          {currentScene === Scene.SETTINGS && (
+            <div className="absolute inset-0 animate-slide-right">
+              <SettingsScene
+                changeScene={setCurrentScene}
+                saveData={saveData}
+                updateSettings={handleUpdateSettings}
+              />
+            </div>
+          )}
+
+          {currentScene === Scene.ACHIEVEMENTS && (
+            <div className="absolute inset-0 animate-slide-right">
+              <AchievementScene
+                changeScene={setCurrentScene}
+                saveData={saveData}
+              />
+            </div>
+          )}
+
+          {currentScene === Scene.DAILY_CHALLENGE && (
+            <div className="absolute inset-0 animate-slide-right">
+              <DailyChallengeScene
+                changeScene={setCurrentScene}
+                saveData={saveData}
+                onStartChallenge={(challenge: DailyChallenge) => {
+                  // Start challenge - will be handled in GameScene
+                  setSelectedLevel(challenge.levelData.levelNumber);
+                  setCurrentScene(Scene.GAME);
+                }}
+              />
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -283,6 +430,33 @@ const App: React.FC = () => {
         score={modalState.score}
         reward={modalState.reward}
         onClose={handleModalClose}
+      />
+
+      {/* Daily Reward Modal */}
+      <DailyRewardModal
+        isOpen={dailyRewardState.isOpen}
+        reward={dailyRewardState.reward}
+        onClaim={() => {
+          if (dailyRewardState.reward) {
+            const today = new Date().toDateString();
+            const currentStreak = saveData.dailyRewards?.lastClaimDate === new Date(Date.now() - 86400000).toDateString()
+              ? (saveData.dailyRewards.streak || 0) + 1
+              : 1;
+            
+            setSaveData(prev => ({
+              ...prev,
+              currency: prev.currency + dailyRewardState.reward!.amount,
+              dailyRewards: {
+                lastClaimDate: today,
+                streak: currentStreak >= 7 ? 1 : currentStreak,
+                totalDays: (prev.dailyRewards?.totalDays || 0) + 1,
+              }
+            }));
+            
+            setDailyRewardState({ isOpen: false, reward: null });
+          }
+        }}
+        onClose={() => setDailyRewardState({ isOpen: false, reward: null })}
       />
     </div>
   );

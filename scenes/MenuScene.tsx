@@ -92,6 +92,35 @@ export const MenuScene: React.FC<MenuSceneProps> = ({ changeScene, currency }) =
           <span className="relative z-10">MAĞAZA</span>
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
         </Button>
+        <Button 
+          onClick={() => changeScene(Scene.DAILY_CHALLENGE)} 
+          size="md" 
+          variant="primary" 
+          className="w-full hover-lift ripple group relative overflow-hidden"
+        >
+          <span className="relative z-10">🎯 GÜNLÜK ZORLUK</span>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+        </Button>
+        <div className="grid grid-cols-2 gap-3 w-full">
+          <Button 
+            onClick={() => changeScene(Scene.ACHIEVEMENTS)} 
+            size="md" 
+            variant="secondary" 
+            className="hover-lift ripple group relative overflow-hidden"
+          >
+            <span className="relative z-10">🏆 BAŞARILAR</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+          </Button>
+          <Button 
+            onClick={() => changeScene(Scene.SETTINGS)} 
+            size="md" 
+            variant="secondary" 
+            className="hover-lift ripple group relative overflow-hidden"
+          >
+            <span className="relative z-10">⚙️ AYARLAR</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+          </Button>
+        </div>
       </div>
 
       {/* Enhanced Currency Display */}

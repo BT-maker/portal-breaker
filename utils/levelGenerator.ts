@@ -45,6 +45,10 @@ export function generateLevel(levelNum: number): LevelData {
   
   // Explosive block chance (stays low)
   const explosiveChance = 0.02;
+  
+  // New block type chances (only appear after level 5)
+  const iceChance = levelNum > 5 ? 0.03 : 0;
+  const bouncyChance = levelNum > 10 ? 0.02 : 0;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -76,30 +80,40 @@ export function generateLevel(levelNum: number): LevelData {
         // HP scales more aggressively with level
         // Level 1: 1-2 HP, Level 50: 1-8 HP
         const baseHp = Math.ceil(Math.random() * (1 + Math.floor(levelNum / 7)));
-        const hp = Math.max(1, baseHp);
+        let hp = Math.max(1, baseHp);
         
         // Determine block type based on level and chance
-        let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' = 'NORMAL';
+        let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' = 'NORMAL';
         
-        if (Math.random() < explosiveChance) {
+        const rand = Math.random();
+        
+        // Other block types
+        if (rand < bouncyChance) {
+          type = 'BOUNCY';
+        } else if (rand < bouncyChance + iceChance) {
+          type = 'ICE';
+        } else if (rand < bouncyChance + iceChance + explosiveChance) {
           type = 'EXPLOSIVE';
         } else if (hp >= 3 || Math.random() < hardBlockChance) {
           type = 'HARD';
         }
         
-        blocks.push({
+        const block: Block = {
           id: `b_${r}_${c}`,
           x: startX + c * (blockWidth + BLOCK_PADDING),
           y: startY + r * (blockHeight + BLOCK_PADDING),
           width: blockWidth,
           height: blockHeight,
-          hp: type === 'EXPLOSIVE' ? 1 : hp,
+          hp: (type === 'EXPLOSIVE') ? 1 : hp,
           maxHp: hp,
           type,
-          color: COLORS[(r + c) % COLORS.length],
-          // Assign powerup chance during generation (10% chance per block)
+          color: type === 'ICE' ? '#06b6d4' : 
+                 type === 'BOUNCY' ? '#f59e0b' :
+                 COLORS[(r + c) % COLORS.length],
           hasPowerUp: Math.random() < 0.1
-        });
+        };
+        
+        blocks.push(block);
         
         placedBlocks++;
       }
@@ -135,6 +149,45 @@ export function generateLevel(levelNum: number): LevelData {
     cols,
     blocks,
     portals: [], 
+    speedMultiplier: 1 + (levelNum * 0.02)
+  };
+}
+
+export function generateBossLevel(levelNum: number): LevelData {
+  const blocks: Block[] = [];
+  const bossLevel = Math.floor(levelNum / 10) * 10; // 10, 20, 30, etc.
+  
+  // Create a boss level with fewer normal blocks and a boss block
+  const normalLevel = generateLevel(levelNum);
+  blocks.push(...normalLevel.blocks.filter(b => b.type !== 'PORTAL'));
+  
+  // Add boss block in the center-top
+  const bossSize = 80;
+  const bossX = GAME_WIDTH / 2 - bossSize / 2;
+  const bossY = 80;
+  const bossHp = 20 + (bossLevel / 10) * 10; // 20, 30, 40, etc.
+  
+  const bossBlock: Block = {
+    id: 'boss_' + bossLevel,
+    x: bossX,
+    y: bossY,
+    width: bossSize,
+    height: bossSize / 2,
+    hp: bossHp,
+    maxHp: bossHp,
+    type: 'BOSS',
+    color: '#dc2626',
+    hasPowerUp: false,
+  };
+  
+  blocks.push(bossBlock);
+  
+  return {
+    levelNumber: levelNum,
+    rows: normalLevel.rows,
+    cols: normalLevel.cols,
+    blocks,
+    portals: [],
     speedMultiplier: 1 + (levelNum * 0.02)
   };
 }

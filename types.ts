@@ -4,6 +4,15 @@ export enum Scene {
   LEVEL_SELECT = 'LEVEL_SELECT',
   GAME = 'GAME',
   SHOP = 'SHOP',
+  ACHIEVEMENTS = 'ACHIEVEMENTS',
+  SETTINGS = 'SETTINGS',
+  LEADERBOARD = 'LEADERBOARD',
+  DAILY_CHALLENGE = 'DAILY_CHALLENGE',
+  SEASON = 'SEASON',
+  ENDLESS = 'ENDLESS',
+  SPEED_MODE = 'SPEED_MODE',
+  LEVEL_EDITOR = 'LEVEL_EDITOR',
+  REPLAY = 'REPLAY',
 }
 
 export interface Vector2 {
@@ -19,9 +28,11 @@ export interface Block {
   height: number;
   hp: number;
   maxHp: number;
-  type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL';
+  type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' | 'BOSS';
   color: string;
   hasPowerUp?: boolean;
+  vx?: number; // For BOSS blocks movement
+  vy?: number; // For BOSS blocks movement
 }
 
 export interface Portal {
@@ -124,6 +135,36 @@ export interface SaveData {
     perfectLevels: number;
     fastLevels: number;
   };
+  levelStats: Record<number, {
+    bestScore: number;
+    bestTime: number;
+    bestLives: number;
+    timesPlayed: number;
+    blocksBroken: number;
+    powerUpsCollected: number;
+  }>;
+  dailyRewards: {
+    lastClaimDate: string;
+    streak: number;
+    totalDays: number;
+  };
+  season: {
+    currentSeason: number;
+    seasonProgress: number;
+    seasonStartDate: string;
+  };
+  leaderboard: {
+    scores: Array<{ level: number; score: number; playerName: string; date: string }>;
+    combos: Array<{ combo: number; playerName: string; date: string }>;
+    speed: Array<{ time: number; level: number; playerName: string; date: string }>;
+  };
+  difficulty: 'EASY' | 'NORMAL' | 'HARD' | 'EXTREME';
+  playerName: string;
+  language: 'TR' | 'EN';
+  graphicsQuality: 'LOW' | 'MEDIUM' | 'HIGH';
+  fullscreen: boolean;
+  customLevels: Array<{ id: string; name: string; data: LevelData }>;
+  replays: Array<{ id: string; level: number; score: number; data: any; date: string }>;
 }
 
 export interface ShopItem {

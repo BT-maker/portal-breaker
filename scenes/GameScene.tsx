@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Scene, SaveData, LevelData, Vector2, Portal, Block, Particle, BallEntity, PowerUp, Projectile } from '../types';
-import { generateLevel } from '../utils/levelGenerator.ts';
+import { generateLevel, generateBossLevel } from '../utils/levelGenerator.ts';
 import { Button } from '../components/Button';
 import { audioManager } from '../utils/audio';
 import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, PORTAL_RADIUS, SKINS, PADDLE_IMAGES, BALL_IMAGES, ACHIEVEMENTS } from '../constants';
@@ -8,8 +8,15 @@ import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, POR
 interface GameSceneProps {
   levelNum: number;
   saveData: SaveData;
-  onGameOver: (score: number, win: boolean, lives?: number) => void;
+  onGameOver: (score: number, win: boolean, lives?: number, levelStats?: {
+    time: number;
+    blocksBroken: number;
+    powerUpsCollected: number;
+  }) => void;
   onExit: () => void;
+  onGoldCollected?: (amount: number) => void;
+  onStatsUpdate?: (stats: SaveData['stats']) => void;
+  onAchievementUnlocked?: (achievementId: string) => void;
 }
 
 export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGameOver, onExit, onAchievementUnlocked, onStatsUpdate }) => {
@@ -61,6 +68,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     blocksBrokenThisLevel: 0, // Blocks broken in current level
     powerUpsCollectedThisLevel: 0, // Power-ups collected in current level
     initialLives: INITIAL_LIVES, // Track initial lives for perfect level
+    iceSlowTimer: 0, // Timer for ice block slow effect
+    magneticBlocks: [] as string[], // IDs of magnetic blocks affecting balls
   });
 
   // React State for UI overlays
@@ -146,7 +155,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
   // Init Level
   useEffect(() => {
-    const levelData = generateLevel(levelNum);
+    const isBossLevel = levelNum % 10 === 0 && levelNum > 0;
+    const levelData = isBossLevel ? generateBossLevel(levelNum) : generateLevel(levelNum);
     
     // Apply Paddle Upgrade
     const widthUpgrade = saveData.inventory.upgrades.paddleWidth || 0;
@@ -168,6 +178,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     setUiState(s => ({ ...s, started: true }));
 
     // Start background music
+    audioManager.setSFXVolume(saveData.settings.sfxVolume);
+    audioManager.setMusicVolume(saveData.settings.musicVolume);
     audioManager.startBackgroundMusic();
 
     // Start Loop
@@ -178,7 +190,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       audioManager.stopBackgroundMusic();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [levelNum]);
+  }, [levelNum, saveData.settings.sfxVolume, saveData.settings.musicVolume]);
 
   // Input Handling - Mouse and Touch
   useEffect(() => {
@@ -919,6 +931,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     if (state.explosiveShotTimer > 0) state.explosiveShotTimer--;
     if (state.laserBeamTimer > 0) state.laserBeamTimer--;
     if (state.multiShotTimer > 0) state.multiShotTimer--;
+    if (state.iceSlowTimer > 0) state.iceSlowTimer--;
 
     // --- CONTINUOUS FIRE LOGIC ---
     if (state.started && state.isMouseDown) {
@@ -959,8 +972,17 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         onStatsUpdate(newStats);
       }
       
+      // Update leaderboard for combo
+      if (state.maxCombo > 0 && onStatsUpdate) {
+        // Combo leaderboard will be updated via callback
+      }
+      
       audioManager.stopBackgroundMusic();
-      onGameOver(state.score, true, state.lives);
+      onGameOver(state.score, true, state.lives, {
+        time: levelTime,
+        blocksBroken: state.blocksBrokenThisLevel,
+        powerUpsCollected: state.powerUpsCollectedThisLevel,
+      });
       return; 
     }
     
@@ -1237,8 +1259,11 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
         if (!ball.active) continue;
 
-        ball.x += ball.vx;
-        ball.y += ball.vy;
+        // Ice slow effect
+        const speedMultiplier = state.iceSlowTimer > 0 ? 0.5 : 1.0;
+        
+        ball.x += ball.vx * speedMultiplier;
+        ball.y += ball.vy * speedMultiplier;
 
         // Walls
         if (ball.x < BALL_RADIUS) {
@@ -1301,11 +1326,61 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                       break;
                     }
                     
-                    // Normal Collision Logic
-                    if (Math.abs(dx) > Math.abs(dy)) {
+                    // --- BOSS BLOCK LOGIC ---
+                    if (b.type === 'BOSS') {
+                      // Boss takes 1 damage per hit
+                      b.hp--;
+                      createParticles(closestX, closestY, '#dc2626', 10, 0.8, 6);
+                      audioManager.playHit();
+                      
+                      if (b.hp <= 0) {
+                        // Boss defeated!
+                        createParticles(b.x + b.width/2, b.y + b.height/2, '#dc2626', 50, 2.0, 15);
+                        state.screenShake = { x: 0, y: 0, intensity: 5, duration: 20 };
+                        state.screenFlash = { intensity: 0.8, color: '#dc2626', duration: 15 };
+                        audioManager.playLevelComplete();
+                        
+                        // Boss gives extra reward
+                        if (onGoldCollected) {
+                          onGoldCollected(100 + (levelNum / 10) * 50);
+                        }
+                        
+                        state.blocks.splice(bIdx, 1);
+                        break;
+                      }
+                      
+                      // Bounce ball
+                      if (Math.abs(dx) > Math.abs(dy)) {
                         ball.vx *= -1;
-                    } else {
+                      } else {
                         ball.vy *= -1;
+                      }
+                      break;
+                    }
+                    
+                    // --- ICE BLOCK LOGIC ---
+                    if (b.type === 'ICE') {
+                      state.iceSlowTimer = 180; // 3 seconds slow
+                      createParticles(b.x + b.width/2, b.y + b.height/2, '#06b6d4', 15, 1.0, 5);
+                    }
+                    
+                    // --- BOUNCY BLOCK LOGIC ---
+                    if (b.type === 'BOUNCY') {
+                      // Random bounce direction
+                      const angle = Math.random() * Math.PI * 2;
+                      const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+                      ball.vx = Math.cos(angle) * speed;
+                      ball.vy = Math.sin(angle) * speed;
+                      createParticles(b.x + b.width/2, b.y + b.height/2, '#f59e0b', 10, 0.8, 6);
+                    }
+                    
+                    // Normal Collision Logic (skip for bouncy as it's handled above)
+                    if (b.type !== 'BOUNCY') {
+                      if (Math.abs(dx) > Math.abs(dy)) {
+                          ball.vx *= -1;
+                      } else {
+                          ball.vy *= -1;
+                      }
                     }
 
                     b.hp--;
@@ -1520,6 +1595,39 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         ctx.font = 'bold 10px sans-serif';
         ctx.fillText('🌀', -6, 4);
         ctx.restore();
+      } else if (b.type === 'BOSS') {
+        // Boss block special rendering
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#dc2626';
+        const bossPulse = Math.sin(Date.now() / 150) * 0.15 + 1;
+        ctx.save();
+        ctx.translate(b.x + b.width/2, b.y + b.height/2);
+        ctx.scale(bossPulse, bossPulse);
+        
+        // Boss block body
+        ctx.fillStyle = b.color;
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(-b.width/2, -b.height/2, b.width, b.height, b.height/2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(-b.width/2, -b.height/2, b.width, b.height);
+        }
+        
+        // Boss HP bar
+        const hpPercent = b.hp / b.maxHp;
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(-b.width/2, -b.height/2 - 8, b.width * hpPercent, 4);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-b.width/2, -b.height/2 - 8, b.width, 4);
+        
+        // Boss icon
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText('👹', -10, 5);
+        
+        ctx.restore();
       } else {
         if (b.type === 'HARD') {
           ctx.strokeStyle = '#fff';
@@ -1537,6 +1645,16 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
           ctx.shadowBlur = 10;
           ctx.shadowColor = 'red';
         }
+        if (b.type === 'ICE') {
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = '#06b6d4';
+          const pulse = Math.sin(Date.now() / 300) * 0.1 + 1;
+          ctx.globalAlpha = 0.8 + (b.hp / b.maxHp) * 0.2;
+        }
+        if (b.type === 'BOUNCY') {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#f59e0b';
+        }
         
         ctx.globalAlpha = b.hp / b.maxHp;
         
@@ -1550,6 +1668,17 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             ctx.rect(b.x, b.y, b.width, b.height);
         }
         ctx.fill();
+        
+        // Special block icons
+        if (b.type === 'ICE') {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 8px sans-serif';
+          ctx.fillText('❄', b.x + b.width/2 - 4, b.y + b.height/2 + 3);
+        } else if (b.type === 'BOUNCY') {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 8px sans-serif';
+          ctx.fillText('⚡', b.x + b.width/2 - 4, b.y + b.height/2 + 3);
+        }
         
         ctx.globalAlpha = 1.0;
       }
@@ -1830,59 +1959,82 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
   return (
     <div className="relative flex flex-col items-center justify-center h-full bg-teal-950/20 animate-fade-in">
       {/* Enhanced Modern HUD */}
-      <div className="absolute top-0 w-full max-w-[800px] p-3 md:p-4 flex flex-wrap justify-between items-center gap-3 z-10 font-mono animate-slide-down">
-        <div className="flex gap-3 md:gap-4 flex-wrap">
-          {/* Level Badge */}
-          <div className="glass-strong text-teal-100 px-4 py-2.5 rounded-xl border-2 border-teal-500/40 font-bold shadow-xl hover-lift group">
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-300 text-sm">📊</span>
-              <span className="text-sm md:text-base">SEVİYE</span>
-              <span className="text-emerald-200 text-lg md:text-xl group-hover:scale-110 transition-transform">
-                {levelNum}
-              </span>
+      <div className="absolute top-0 w-full max-w-[800px] p-3 md:p-4 flex flex-col gap-2 z-10 font-mono animate-slide-down">
+        {/* Boss HP Bar */}
+        {gameStateRef.current.blocks.some(b => b.type === 'BOSS') && (() => {
+          const bossBlock = gameStateRef.current.blocks.find(b => b.type === 'BOSS');
+          if (!bossBlock) return null;
+          const hpPercent = (bossBlock.hp / bossBlock.maxHp) * 100;
+          return (
+            <div className="w-full glass-strong px-4 py-2 rounded-xl border-2 border-red-500/40">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-red-300 text-sm font-bold">👹 BOSS</span>
+                <span className="text-red-200 text-sm font-mono">{bossBlock.hp}/{bossBlock.maxHp}</span>
+              </div>
+              <div className="w-full h-3 bg-red-900/50 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300"
+                  style={{ width: `${hpPercent}%` }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+        
+        <div className="flex flex-wrap justify-between items-center gap-3">
+          <div className="flex gap-3 md:gap-4 flex-wrap">
+            {/* Level Badge */}
+            <div className="glass-strong text-teal-100 px-4 py-2.5 rounded-xl border-2 border-teal-500/40 font-bold shadow-xl hover-lift group">
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-300 text-sm">📊</span>
+                <span className="text-sm md:text-base">SEVİYE</span>
+                <span className="text-emerald-200 text-lg md:text-xl group-hover:scale-110 transition-transform">
+                  {levelNum}
+                </span>
+              </div>
+            </div>
+            
+            {/* Score Badge with Animation */}
+            <div className="glass-strong text-teal-100 px-4 py-2.5 rounded-xl border-2 border-teal-500/40 font-bold shadow-xl hover-lift group">
+              <div className="flex items-center gap-2">
+                <span className="text-yellow-300 text-sm">⭐</span>
+                <span className="text-sm md:text-base">PUAN:</span>
+                <span className="text-yellow-200 text-lg md:text-xl font-mono group-hover:scale-110 transition-transform">
+                  {uiState.score.toLocaleString()}
+                </span>
+              </div>
             </div>
           </div>
           
-          {/* Score Badge with Animation */}
-          <div className="glass-strong text-teal-100 px-4 py-2.5 rounded-xl border-2 border-teal-500/40 font-bold shadow-xl hover-lift group">
-            <div className="flex items-center gap-2">
-              <span className="text-yellow-300 text-sm">⭐</span>
-              <span className="text-sm md:text-base">PUAN:</span>
-              <span className="text-yellow-200 text-lg md:text-xl font-mono group-hover:scale-110 transition-transform">
-                {uiState.score.toLocaleString()}
-              </span>
+          {/* Lives with Enhanced Display */}
+          <div className="flex gap-2 items-center glass-strong px-4 py-2 rounded-full border-2 border-red-500/40 shadow-xl hover-lift">
+            <span className="text-xs text-red-300 font-bold uppercase tracking-wider hidden md:inline">CAN:</span>
+            <div className="flex gap-1">
+              {Array.from({length: Math.max(0, uiState.lives)}).map((_, i) => (
+                <span 
+                  key={i} 
+                  className="text-red-400 text-xl md:text-2xl drop-shadow-lg animate-pulse"
+                  style={{ animationDelay: `${i * 0.1}s` }}
+                >
+                  ❤️
+                </span>
+              ))}
             </div>
           </div>
+          
+          {/* Exit Button */}
+          <Button 
+            size="sm" 
+            variant="danger" 
+            onClick={() => {
+              audioManager.stopBackgroundMusic();
+              onExit();
+            }} 
+            className="shadow-xl hover-lift ripple"
+          >
+            ✕ ÇIKIŞ
+          </Button>
         </div>
-        
-        {/* Lives with Enhanced Display */}
-        <div className="flex gap-2 items-center glass-strong px-4 py-2 rounded-full border-2 border-red-500/40 shadow-xl hover-lift">
-          <span className="text-xs text-red-300 font-bold uppercase tracking-wider hidden md:inline">CAN:</span>
-          <div className="flex gap-1">
-            {Array.from({length: Math.max(0, uiState.lives)}).map((_, i) => (
-              <span 
-                key={i} 
-                className="text-red-400 text-xl md:text-2xl drop-shadow-lg animate-pulse"
-                style={{ animationDelay: `${i * 0.1}s` }}
-              >
-                ❤️
-              </span>
-            ))}
-          </div>
-        </div>
-        
-        {/* Exit Button */}
-        <Button 
-          size="sm" 
-          variant="danger" 
-          onClick={() => {
-            audioManager.stopBackgroundMusic();
-            onExit();
-          }} 
-          className="shadow-xl hover-lift ripple"
-        >
-          ✕ ÇIKIŞ
-        </Button>
       </div>
 
       {/* Canvas Wrapper */}

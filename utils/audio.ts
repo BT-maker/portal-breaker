@@ -1,6 +1,8 @@
 class AudioManager {
   private ctx: AudioContext | null = null;
   private masterVolume: number = 0.5;
+  private sfxVolume: number = 0.5;
+  private musicVolume: number = 0.5;
   private bgMusicOscillators: OscillatorNode[] = [];
   private bgMusicGain: GainNode | null = null;
   private isPlayingBgMusic: boolean = false;
@@ -20,9 +22,22 @@ class AudioManager {
 
   setVolume(vol: number) {
     this.masterVolume = Math.max(0, Math.min(1, vol));
+    this.sfxVolume = vol;
+    this.musicVolume = vol;
     if (this.bgMusicGain) {
-      this.bgMusicGain.gain.setValueAtTime(this.masterVolume * 0.15, this.ctx!.currentTime);
+      this.bgMusicGain.gain.setValueAtTime(this.musicVolume * 0.15, this.ctx!.currentTime);
     }
+  }
+
+  setMusicVolume(vol: number) {
+    this.musicVolume = Math.max(0, Math.min(1, vol));
+    if (this.bgMusicGain) {
+      this.bgMusicGain.gain.setValueAtTime(vol * 0.15, this.ctx!.currentTime);
+    }
+  }
+
+  setSFXVolume(vol: number) {
+    this.sfxVolume = Math.max(0, Math.min(1, vol));
   }
 
   private createOscillator(type: OscillatorType, freq: number, duration: number, volMultiplier: number = 1) {
@@ -34,7 +49,7 @@ class AudioManager {
     osc.type = type;
     osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
     
-    gainNode.gain.setValueAtTime(this.masterVolume * volMultiplier, this.ctx.currentTime);
+    gainNode.gain.setValueAtTime(this.sfxVolume * volMultiplier, this.ctx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
 
     osc.connect(gainNode);
@@ -66,7 +81,7 @@ class AudioManager {
     osc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 0.2);
     
     gain.gain.setValueAtTime(0, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(this.masterVolume * 0.4, this.ctx.currentTime + 0.05);
+    gain.gain.linearRampToValueAtTime(this.sfxVolume * 0.4, this.ctx.currentTime + 0.05);
     gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
 
     osc.connect(gain);
@@ -103,7 +118,7 @@ class AudioManager {
 
     this.isPlayingBgMusic = true;
     this.bgMusicGain = this.ctx.createGain();
-    this.bgMusicGain.gain.setValueAtTime(this.masterVolume * 0.15, this.ctx.currentTime);
+    this.bgMusicGain.gain.setValueAtTime(this.musicVolume * 0.15, this.ctx.currentTime);
     this.bgMusicGain.connect(this.ctx.destination);
 
     // Retro atari style chiptune melody
