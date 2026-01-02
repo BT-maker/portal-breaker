@@ -56,8 +56,6 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'upgrade_width_1', name: 'Geniş Paddle I', type: 'UPGRADE_WIDTH', price: 200, description: 'Paddle genişliğini %10 artırır.' },
   { id: 'upgrade_width_2', name: 'Geniş Paddle II', type: 'UPGRADE_WIDTH', price: 500, description: 'Paddle genişliğini %20 artırır.' },
   { id: 'upgrade_width_3', name: 'Geniş Paddle III', type: 'UPGRADE_WIDTH', price: 1000, description: 'Maksimum paddle genişliği.' },
-  
-  { id: 'upgrade_speed_1', name: 'Hızlı Top I', type: 'UPGRADE_SPEED', price: 300, description: 'Topun başlangıç hızını artırır.' },
 
   // Paddle Skins
   { id: 'skin_paddle_crimson', name: 'Kızıl Muhafız', type: 'SKIN_PADDLE', price: 300, description: 'Yoğun ateş efektli paddle.', value: SKINS.PADDLE.CRIMSON },

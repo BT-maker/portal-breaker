@@ -8,7 +8,7 @@ import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, POR
 interface GameSceneProps {
   levelNum: number;
   saveData: SaveData;
-  onGameOver: (score: number, win: boolean) => void;
+  onGameOver: (score: number, win: boolean, lives?: number) => void;
   onExit: () => void;
 }
 
@@ -167,11 +167,15 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     
     setUiState(s => ({ ...s, started: true }));
 
+    // Start background music
+    audioManager.startBackgroundMusic();
+
     // Start Loop
     requestRef.current = requestAnimationFrame(gameLoop);
 
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      audioManager.stopBackgroundMusic();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [levelNum]);
@@ -591,8 +595,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
   const activateRapidFire = () => {
       const state = gameStateRef.current;
-      // 600 frames approx 10 seconds at 60fps
-      state.rapidFireTimer = 600; 
+      // 300 frames = 5 seconds at 60fps
+      state.rapidFireTimer = 300; 
   };
 
   // Generic particle spawner
@@ -955,7 +959,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         onStatsUpdate(newStats);
       }
       
-      onGameOver(state.score, true);
+      audioManager.stopBackgroundMusic();
+      onGameOver(state.score, true, state.lives);
       return; 
     }
     
@@ -965,6 +970,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       
       if (state.lives <= 0) {
         audioManager.playGameOver();
+        audioManager.stopBackgroundMusic();
         onGameOver(state.score, false);
         return;
       } else {
@@ -1198,19 +1204,19 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                 activateRapidFire();
                 audioManager.playPortal();
             } else if (p.type === 'SHIELD') {
-                state.shieldTimer = 600; // 10 seconds
+                state.shieldTimer = 300; // 5 seconds
                 audioManager.playPortal();
             } else if (p.type === 'SLOW_MO') {
-                state.slowMoTimer = 600; // 10 seconds
+                state.slowMoTimer = 300; // 5 seconds
                 audioManager.playPortal();
             } else if (p.type === 'EXPLOSIVE_SHOT') {
-                state.explosiveShotTimer = 600; // 10 seconds
+                state.explosiveShotTimer = 300; // 5 seconds
                 audioManager.playPortal();
             } else if (p.type === 'LASER_BEAM') {
-                state.laserBeamTimer = 600; // 10 seconds
+                state.laserBeamTimer = 300; // 5 seconds
                 audioManager.playPortal();
             } else if (p.type === 'MULTI_SHOT') {
-                state.multiShotTimer = 600; // 10 seconds
+                state.multiShotTimer = 300; // 5 seconds
                 audioManager.playPortal();
             }
             state.powerUps.splice(i, 1);
@@ -1882,7 +1888,10 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         <Button 
           size="sm" 
           variant="danger" 
-          onClick={onExit} 
+          onClick={() => {
+            audioManager.stopBackgroundMusic();
+            onExit();
+          }} 
           className="shadow-xl hover-lift ripple"
         >
           ✕ ÇIKIŞ

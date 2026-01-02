@@ -107,16 +107,36 @@ const App: React.FC = () => {
     localStorage.setItem('blockBreakerSave', JSON.stringify(saveData));
   }, [saveData]);
 
-  const handleLevelComplete = (score: number, win: boolean) => {
+  const handleLevelComplete = (score: number, win: boolean, lives?: number) => {
     if (win) {
-      // Calculate Reward: Fixed 100 Gold per level request
-      const reward = 100;
+      // Calculate Reward based on level and stars
+      const stars = Math.min(3, lives || 1);
+      
+      // Base rewards for levels 1-10
+      const baseRewards = {
+        3: 50,  // 3 stars
+        2: 30,  // 2 stars
+        1: 15   // 1 star
+      };
+      
+      let multiplier = 1;
+      if (selectedLevel >= 11 && selectedLevel <= 20) {
+        multiplier = 2; // 2x for levels 11-20
+      } else if (selectedLevel >= 21 && selectedLevel <= 30) {
+        multiplier = 3; // 3x for levels 21-30 (2 * 1.5)
+      } else if (selectedLevel >= 31 && selectedLevel <= 40) {
+        multiplier = 4.5; // 4.5x for levels 31-40 (3 * 1.5)
+      } else if (selectedLevel >= 41 && selectedLevel <= 50) {
+        multiplier = 6.75; // 6.75x for levels 41-50 (4.5 * 1.5)
+      }
+      
+      const reward = Math.floor(baseRewards[stars as keyof typeof baseRewards] * multiplier);
 
       setSaveData(prev => {
         const newUnlocked = Math.max(prev.unlockedLevels, selectedLevel + 1);
         const currentStars = prev.levelStars[selectedLevel] || 0;
-        // Simple star logic: 1 star for win
-        const newStars = Math.max(currentStars, 1); 
+        // Star logic: based on remaining lives (3 lives = 3 stars, 2 lives = 2 stars, 1 life = 1 star)
+        const newStars = Math.max(currentStars, stars); 
         
         return {
           ...prev,

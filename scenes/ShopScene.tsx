@@ -11,6 +11,7 @@ interface ShopSceneProps {
 }
 
 export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buyItem, equipItem }) => {
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'paddle' | 'ball' | 'upgrade'>('all');
   
   const isOwned = (id: string) => {
     return saveData.inventory.paddleSkins.includes(id) || 
@@ -35,6 +36,16 @@ export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buy
     if (item.id === 'upgrade_width_3' && saveData.inventory.upgrades.paddleWidth < 2) return true;
     return false;
   };
+
+  const getFilteredItems = () => {
+    if (selectedCategory === 'all') return SHOP_ITEMS;
+    if (selectedCategory === 'paddle') return SHOP_ITEMS.filter(item => item.type === 'SKIN_PADDLE');
+    if (selectedCategory === 'ball') return SHOP_ITEMS.filter(item => item.type === 'SKIN_BALL');
+    if (selectedCategory === 'upgrade') return SHOP_ITEMS.filter(item => item.type === 'UPGRADE_WIDTH' || item.type === 'UPGRADE_SPEED');
+    return SHOP_ITEMS;
+  };
+
+  const filteredItems = getFilteredItems();
 
   return (
     <div className="flex flex-col h-full p-6 md:p-8 animate-fade-in bg-gradient-to-b from-[#022c22] to-[#042f2e] relative overflow-hidden">
@@ -87,10 +98,56 @@ export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buy
         </div>
       </div>
 
+      {/* Category Menu */}
+      <div className="flex-none mb-6 z-20 relative">
+        <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold text-sm md:text-base transition-all duration-300 ${
+              selectedCategory === 'all'
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg shadow-teal-500/50 scale-105'
+                : 'bg-teal-900/50 text-teal-200 hover:bg-teal-800/50 hover:scale-105'
+            }`}
+          >
+            Tümü
+          </button>
+          <button
+            onClick={() => setSelectedCategory('paddle')}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold text-sm md:text-base transition-all duration-300 ${
+              selectedCategory === 'paddle'
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg shadow-teal-500/50 scale-105'
+                : 'bg-teal-900/50 text-teal-200 hover:bg-teal-800/50 hover:scale-105'
+            }`}
+          >
+            Paddle Skins
+          </button>
+          <button
+            onClick={() => setSelectedCategory('ball')}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold text-sm md:text-base transition-all duration-300 ${
+              selectedCategory === 'ball'
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg shadow-teal-500/50 scale-105'
+                : 'bg-teal-900/50 text-teal-200 hover:bg-teal-800/50 hover:scale-105'
+            }`}
+          >
+            Ball Skins
+          </button>
+          <button
+            onClick={() => setSelectedCategory('upgrade')}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold text-sm md:text-base transition-all duration-300 ${
+              selectedCategory === 'upgrade'
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg shadow-teal-500/50 scale-105'
+                : 'bg-teal-900/50 text-teal-200 hover:bg-teal-800/50 hover:scale-105'
+            }`}
+          >
+            Upgrades
+          </button>
+        </div>
+      </div>
+
       {/* Enhanced Content Grid */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-4 -mr-2 custom-scrollbar pb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-          {SHOP_ITEMS.map((item, index) => (
+          {filteredItems.map((item, index) => (
             <div
               key={item.id}
               className="animate-slide-up"
