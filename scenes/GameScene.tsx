@@ -164,9 +164,11 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const korsanPaddleImg = new Image();
     korsanPaddleImg.onload = () => {
       imageCacheRef.current.korsanPaddle = korsanPaddleImg;
+      console.log('Korsan paddle loaded');
     };
     korsanPaddleImg.onerror = () => {
       imageCacheRef.current.korsanPaddle = null;
+      console.error('Failed to load korsan paddle');
     };
     const korsanPaddleUrl = window.location.pathname.includes('/portal-breaker/') 
       ? '/portal-breaker/assets/korsan/korsan-paddle.png'
@@ -176,9 +178,11 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const korsanBgImg = new Image();
     korsanBgImg.onload = () => {
       imageCacheRef.current.korsanBg = korsanBgImg;
+      console.log('Korsan bg loaded');
     };
     korsanBgImg.onerror = () => {
       imageCacheRef.current.korsanBg = null;
+      console.error('Failed to load korsan bg');
     };
     const korsanBgUrl = window.location.pathname.includes('/portal-breaker/') 
       ? '/portal-breaker/assets/korsan/korsan-bg.jpeg'
@@ -202,9 +206,11 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const korsanBlockImg = new Image();
     korsanBlockImg.onload = () => {
       imageCacheRef.current.korsanBlock = korsanBlockImg;
+      console.log('Korsan block loaded');
     };
     korsanBlockImg.onerror = () => {
       imageCacheRef.current.korsanBlock = null;
+      console.error('Failed to load korsan block');
     };
     const korsanBlockUrl = window.location.pathname.includes('/portal-breaker/') 
       ? '/portal-breaker/assets/korsan/korsan-block.png'
