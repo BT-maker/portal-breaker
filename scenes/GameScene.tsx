@@ -738,7 +738,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
   };
 
   // Specific Visual Effects Logic
-  const generateEffects = () => {
+  const generateEffects = (deltaTime: number) => {
     const state = gameStateRef.current;
     state.frameCount++;
 
@@ -1013,8 +1013,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     // Slow-mo effect: adjust update rate
     const timeDelta = state.slowMoTimer > 0 ? 0.5 : 1.0;
     
-    updatePhysics();
-    generateEffects(); 
+    updatePhysics(deltaTime);
+    generateEffects(deltaTime); 
     draw();
 
     const breakableBlocks = state.blocks.filter(b => b.type !== 'PORTAL');
@@ -1074,7 +1074,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     requestRef.current = requestAnimationFrame(gameLoop);
   };
 
-  const updatePhysics = () => {
+  const updatePhysics = (deltaTime: number) => {
     const state = gameStateRef.current;
     
     // Decay hit effect
