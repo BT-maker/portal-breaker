@@ -30,12 +30,14 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     korsanPaddle: HTMLImageElement | null;
     korsanBg: HTMLImageElement | null;
     korsanBoss: HTMLImageElement | null;
+    korsanBlock: HTMLImageElement | null;
   }>({
     paddles: new Map(),
     balls: new Map(),
     korsanPaddle: null,
     korsanBg: null,
     korsanBoss: null,
+    korsanBlock: null,
   });
   
   // Game State Refs
@@ -195,6 +197,19 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
       ? '/portal-breaker/assets/korsan/korsan-boss.png'
       : '/assets/korsan/korsan-boss.png';
     korsanBossImg.src = korsanBossUrl;
+
+    // Load korsan block image (for levels 1-10)
+    const korsanBlockImg = new Image();
+    korsanBlockImg.onload = () => {
+      imageCacheRef.current.korsanBlock = korsanBlockImg;
+    };
+    korsanBlockImg.onerror = () => {
+      imageCacheRef.current.korsanBlock = null;
+    };
+    const korsanBlockUrl = window.location.pathname.includes('/portal-breaker/') 
+      ? '/portal-breaker/assets/korsan/korsan-block.png'
+      : '/assets/korsan/korsan-block.png';
+    korsanBlockImg.src = korsanBlockUrl;
   }, []);
 
   // Init Level
@@ -1740,16 +1755,56 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         
         ctx.globalAlpha = b.hp / b.maxHp;
         
-        // --- UPDATED BLOCK DRAWING: Rounded Corners (50% Radius) ---
-        ctx.beginPath();
-        if (ctx.roundRect) {
-            // Using height/2 creates a pill shape (50% radius)
+        // Use korsan block image for levels 1-10
+        const blockImage = (levelNum <= 10 && imageCacheRef.current.korsanBlock && imageCacheRef.current.korsanBlock.complete)
+          ? imageCacheRef.current.korsanBlock
+          : null;
+        
+        if (blockImage) {
+          // Draw korsan block image - fill block area completely
+          ctx.save();
+          ctx.beginPath();
+          if (ctx.roundRect) {
             ctx.roundRect(b.x, b.y, b.width, b.height, b.height/2);
-        } else {
-            // Fallback for older browsers
+          } else {
             ctx.rect(b.x, b.y, b.width, b.height);
+          }
+          ctx.clip();
+          
+          // Draw image to fill entire block area - maintain aspect ratio but scale to cover
+          const imgAspect = blockImage.naturalWidth / blockImage.naturalHeight;
+          const blockAspect = b.width / b.height;
+          
+          let drawWidth = b.width;
+          let drawHeight = b.height;
+          let drawX = b.x;
+          let drawY = b.y;
+          
+          // Scale to cover (fill entire block)
+          if (imgAspect > blockAspect) {
+            // Image is wider, fit to height and center horizontally
+            drawHeight = b.height;
+            drawWidth = drawHeight * imgAspect;
+            drawX = b.x + (b.width - drawWidth) / 2;
+          } else {
+            // Image is taller, fit to width and center vertically
+            drawWidth = b.width;
+            drawHeight = drawWidth / imgAspect;
+            drawY = b.y + (b.height - drawHeight) / 2;
+          }
+          
+          ctx.drawImage(blockImage, drawX, drawY, drawWidth, drawHeight);
+          ctx.restore();
+        } else {
+          // Fallback: draw colored rectangle
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(b.x, b.y, b.width, b.height, b.height/2);
+          } else {
+            ctx.rect(b.x, b.y, b.width, b.height);
+          }
+          ctx.fill();
         }
-        ctx.fill();
         
         // Special block icons
         if (b.type === 'ICE') {
