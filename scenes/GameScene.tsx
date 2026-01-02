@@ -627,13 +627,16 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     }
   };
 
-  // Improved Debris for Block Breaking
+  // Improved Debris for Block Breaking - using block.png colors (purple and cyan)
   const createBlockDebris = (x: number, y: number, color: string, width: number, height: number) => {
     // Break block into 4x2 grid of fragments
     const cols = 4;
     const rows = 2;
     const fragWidth = width / cols;
     const fragHeight = height / rows;
+
+    // Block.png colors: purple (#a855f7, #9333ea) and cyan (#06b6d4, #22d3ee)
+    const blockColors = ['#a855f7', '#9333ea', '#06b6d4', '#22d3ee', '#8b5cf6', '#06b6d4'];
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -646,13 +649,13 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             vy: (r - rows/2 + 0.5) * 2 + (Math.random() - 0.5),
             life: 0.8 + Math.random() * 0.4,
             maxLife: 1.2,
-            color: color,
+            color: blockColors[Math.floor(Math.random() * blockColors.length)],
             size: fragWidth * 0.8 // Fragments retain some block size
         });
       }
     }
 
-    // Add extra fine dust/sparkles
+    // Add extra fine dust/sparkles with block colors (purple and cyan)
     const dustCount = 8;
     for(let i=0; i<dustCount; i++) {
         gameStateRef.current.particles.push({
@@ -663,7 +666,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             vy: (Math.random() - 0.5) * 6,
             life: 0.5 + Math.random() * 0.3,
             maxLife: 0.8,
-            color: '#ffffff', // White sparks
+            color: blockColors[Math.floor(Math.random() * blockColors.length)],
             size: Math.random() * 2 + 1
         });
     }

@@ -310,17 +310,29 @@ const App: React.FC = () => {
     }));
   };
 
+  // Try both paths - with and without base path
+  const bgImageUrl = window.location.pathname.includes('/portal-breaker/') 
+    ? '/portal-breaker/assets/images/bg-image.jpeg'
+    : '/assets/images/bg-image.jpeg';
+
   return (
-    <div className="w-full h-screen bg-teal-950 text-white overflow-hidden bg-[url('https://picsum.photos/1920/1080?blur=5')] bg-cover bg-center bg-no-repeat relative">
-      {/* Enhanced Dark Teal Overlay with Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#042f2e]/95 via-[#022c22]/95 to-[#042f2e]/95 backdrop-blur-sm"></div>
+    <div 
+      className="w-full h-screen text-white overflow-hidden relative" 
+      style={{
+        backgroundImage: `url('${bgImageUrl}')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
+      }}
+    >
       
       {/* Animated Background Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         {[...Array(15)].map((_, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 bg-teal-400/20 rounded-full animate-float"
+            className="absolute w-1 h-1 bg-400/20 rounded-full animate-float"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -331,7 +343,7 @@ const App: React.FC = () => {
         ))}
       </div>
       
-      <div className="relative z-10 w-full h-full max-w-6xl mx-auto shadow-2xl bg-[#042f2e] border-x border-teal-900/50 overflow-hidden">
+      <div className="relative z-10 w-full h-full max-w-6xl mx-auto shadow-2xl overflow-hidden">
         {/* Scene Container with Transition */}
         <div className="relative w-full h-full">
           {currentScene === Scene.MENU && (

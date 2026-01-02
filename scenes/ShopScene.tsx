@@ -48,7 +48,7 @@ export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buy
   const filteredItems = getFilteredItems();
 
   return (
-    <div className="flex flex-col h-full p-6 md:p-8 animate-fade-in bg-gradient-to-b from-[#022c22] to-[#042f2e] relative overflow-hidden">
+    <div className="flex flex-col h-full p-6 md:p-8 animate-fade-in relative overflow-hidden">
       {/* Animated Background Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(20)].map((_, i) => (
