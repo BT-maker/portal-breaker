@@ -952,6 +952,9 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     }
 
     const state = gameStateRef.current;
+    
+    // Calculate delta time (time in seconds since last frame)
+    const deltaTime = state.lastTime === 0 ? 0.016 : Math.min((time - state.lastTime) / 1000, 0.033); // Cap at ~30 FPS minimum
     state.lastTime = time;
     state.frameCount++;
 
@@ -1082,9 +1085,9 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     // Particles Physics
     for (let i = state.particles.length - 1; i >= 0; i--) {
       const p = state.particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life -= 0.02;
+      p.x += p.vx * deltaTime * 60; // Scale to 60 FPS
+      p.y += p.vy * deltaTime * 60; // Scale to 60 FPS
+      p.life -= 0.02 * deltaTime * 60; // Scale to 60 FPS
       p.size *= 0.95; 
       if (p.life <= 0) state.particles.splice(i, 1);
     }
@@ -1093,9 +1096,9 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     for (let i = state.projectiles.length - 1; i >= 0; i--) {
       const proj = state.projectiles[i];
       const prevY = proj.y;
-      proj.y += proj.vy;
+      proj.y += proj.vy * deltaTime * 60; // Scale to 60 FPS
       if (proj.vx !== undefined) {
-        proj.x += proj.vx;
+        proj.x += proj.vx * deltaTime * 60; // Scale to 60 FPS
         
         // Bounce off walls for multi-shot
         if (proj.x < 0 || proj.x + proj.width > GAME_WIDTH) {
@@ -1269,7 +1272,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
 
     for (let i = state.powerUps.length - 1; i >= 0; i--) {
         const p = state.powerUps[i];
-        p.y += p.vy;
+        p.y += p.vy * deltaTime * 60; // Scale to 60 FPS
 
         if (p.y + p.height >= paddleRect.y && 
             p.y <= paddleRect.y + paddleRect.h &&
@@ -1324,8 +1327,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         // Ice slow effect
         const speedMultiplier = state.iceSlowTimer > 0 ? 0.5 : 1.0;
         
-        ball.x += ball.vx * speedMultiplier;
-        ball.y += ball.vy * speedMultiplier;
+        ball.x += ball.vx * speedMultiplier * deltaTime * 60; // Scale to 60 FPS
+        ball.y += ball.vy * speedMultiplier * deltaTime * 60; // Scale to 60 FPS
 
         // Walls
         if (ball.x < BALL_RADIUS) {
