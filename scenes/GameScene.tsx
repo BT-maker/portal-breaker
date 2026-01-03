@@ -78,6 +78,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     initialLives: INITIAL_LIVES, // Track initial lives for perfect level
     iceSlowTimer: 0, // Timer for ice block slow effect
     magneticBlocks: [] as string[], // IDs of magnetic blocks affecting balls
+    ironBlockHits: {} as Record<string, number>, // Track hits on iron blocks for fire weapon
   });
 
   // React State for UI overlays
@@ -459,29 +460,49 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
   const fireGuns = () => {
     const state = gameStateRef.current;
     const now = Date.now();
-    const skinId = saveData.equipped.paddleSkin;
+    const weaponSkinId = saveData.equipped.weaponSkin || 'default';
     
-    // Config based on Skin
+    // Config based on Weapon Skin (prioritize weapon skin over paddle skin)
     let shotConfig = {
         color: '#fbbf24', // Default Yellow
         flashColor: '#fcd34d',
         speed: 10,
         width: 4,
         height: 12,
-        cooldown: 500
+        cooldown: 500,
+        canBreakIron: false, // Special ability for fire weapon
+        ironHitsNeeded: 0
     };
 
-    if (skinId.includes('crimson')) {
-        // Enhanced Crimson: Faster, bigger, redder
-        shotConfig = { color: '#ff0000', flashColor: '#ffcccc', speed: 14, width: 6, height: 20, cooldown: 250 };
-    } else if (skinId.includes('neon')) {
-        shotConfig = { color: '#10b981', flashColor: '#6ee7b7', speed: 14, width: 3, height: 16, cooldown: 400 };
-    } else if (skinId.includes('gold')) {
-        shotConfig = { color: '#eab308', flashColor: '#fef08a', speed: 9, width: 6, height: 10, cooldown: 600 };
-    } else if (skinId.includes('ice')) {
-        shotConfig = { color: '#22d3ee', flashColor: '#a5f3fc', speed: 11, width: 4, height: 14, cooldown: 500 };
-    } else if (skinId.includes('void')) {
-        shotConfig = { color: '#a855f7', flashColor: '#d8b4fe', speed: 13, width: 5, height: 12, cooldown: 550 };
+    // Weapon skin configs (toplardan referans alarak)
+    if (weaponSkinId.includes('fire')) {
+        shotConfig = { color: '#f97316', flashColor: '#fb923c', speed: 12, width: 5, height: 14, cooldown: 450, canBreakIron: true, ironHitsNeeded: 5 };
+    } else if (weaponSkinId.includes('plasma')) {
+        shotConfig = { color: '#a855f7', flashColor: '#c084fc', speed: 13, width: 4, height: 16, cooldown: 400, canBreakIron: false, ironHitsNeeded: 0 };
+    } else if (weaponSkinId.includes('ice')) {
+        shotConfig = { color: '#06b6d4', flashColor: '#67e8f9', speed: 11, width: 4, height: 14, cooldown: 500, canBreakIron: false, ironHitsNeeded: 0 };
+    } else if (weaponSkinId.includes('toxic')) {
+        shotConfig = { color: '#84cc16', flashColor: '#bef264', speed: 10, width: 5, height: 13, cooldown: 480, canBreakIron: false, ironHitsNeeded: 0 };
+    } else if (weaponSkinId.includes('ghost')) {
+        shotConfig = { color: '#94a3b8', flashColor: '#cbd5e1', speed: 14, width: 3, height: 15, cooldown: 420, canBreakIron: false, ironHitsNeeded: 0 };
+    } else if (weaponSkinId.includes('cristal')) {
+        shotConfig = { color: '#e0e0e0', flashColor: '#f5f5f5', speed: 11, width: 5, height: 15, cooldown: 460, canBreakIron: false, ironHitsNeeded: 0 };
+    } else if (weaponSkinId.includes('skull')) {
+        shotConfig = { color: '#1a1a1a', flashColor: '#404040', speed: 13, width: 6, height: 16, cooldown: 440, canBreakIron: false, ironHitsNeeded: 0 };
+    } else {
+        // Fallback to paddle skin if no weapon skin
+        const skinId = saveData.equipped.paddleSkin;
+        if (skinId.includes('crimson')) {
+            shotConfig = { ...shotConfig, color: '#ff0000', flashColor: '#ffcccc', speed: 14, width: 6, height: 20, cooldown: 250 };
+        } else if (skinId.includes('neon')) {
+            shotConfig = { ...shotConfig, color: '#10b981', flashColor: '#6ee7b7', speed: 14, width: 3, height: 16, cooldown: 400 };
+        } else if (skinId.includes('gold')) {
+            shotConfig = { ...shotConfig, color: '#eab308', flashColor: '#fef08a', speed: 9, width: 6, height: 10, cooldown: 600 };
+        } else if (skinId.includes('ice')) {
+            shotConfig = { ...shotConfig, color: '#22d3ee', flashColor: '#a5f3fc', speed: 11, width: 4, height: 14, cooldown: 500 };
+        } else if (skinId.includes('void')) {
+            shotConfig = { ...shotConfig, color: '#a855f7', flashColor: '#d8b4fe', speed: 13, width: 5, height: 12, cooldown: 550 };
+        }
     }
 
     // PowerUp Overrides
@@ -528,7 +549,10 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         effectType: effectType,
         glowIntensity: isRapidFire ? 1.0 : (isLaserBeam || isExplosiveShot ? 0.8 : 0.5),
         trail: [],
-        particles: []
+        particles: [],
+        canBreakIron: shotConfig.canBreakIron,
+        ironHitsNeeded: shotConfig.ironHitsNeeded,
+        ironHits: 0
       };
       
       // RapidFire için özel efektler
@@ -564,14 +588,14 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     state.projectiles.push(leftProj);
     
     // Muzzle Flash Particles Left
-    createMuzzleFlash(state.paddleX + 2, GAME_HEIGHT - 40, shotConfig.flashColor, skinId);
+    createMuzzleFlash(state.paddleX + 2, GAME_HEIGHT - 40, shotConfig.flashColor, weaponSkinId);
 
     // Right Gun
     const rightProj = createProjectile(state.paddleX + state.paddleWidth - 2 - shotConfig.width, GAME_HEIGHT - 35);
     state.projectiles.push(rightProj);
 
     // Muzzle Flash Particles Right
-    createMuzzleFlash(state.paddleX + state.paddleWidth - 6, GAME_HEIGHT - 40, shotConfig.flashColor, skinId);
+    createMuzzleFlash(state.paddleX + state.paddleWidth - 6, GAME_HEIGHT - 40, shotConfig.flashColor, weaponSkinId);
     
     // Multi-shot: fire additional projectiles in an arc
     if (state.multiShotTimer > 0) {
@@ -1203,7 +1227,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             proj.y < b.y + b.height &&
             proj.y + proj.height > b.y) {
             
-            // Hit! (Iron blocks are unbreakable)
+            // Hit! (Iron blocks can be broken by fire weapon)
             if (b.type !== 'IRON') {
               // Boss takes 1.5x damage from projectiles if using kilic paddle on level 10
               if (b.type === 'BOSS' && levelNum === 10 && saveData.equipped.paddleSkin === 'skin_paddle_kilic') {
@@ -1214,9 +1238,33 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
               }
               createParticles(proj.x, proj.y, proj.color, 3, 0.3, 3);
             } else {
-              // Iron block hit effect - just bounce off
-              createParticles(proj.x, proj.y, '#525252', 3, 0.3, 3);
-              audioManager.playHit();
+              // Iron block - can be broken by fire weapon
+              if (proj.canBreakIron && proj.ironHitsNeeded) {
+                // Track hits on this iron block (use block's id as key)
+                const ironHitKey = `iron_${b.id}`;
+                if (!state.ironBlockHits) state.ironBlockHits = {};
+                if (!state.ironBlockHits[ironHitKey]) state.ironBlockHits[ironHitKey] = 0;
+                state.ironBlockHits[ironHitKey]++;
+                
+                // Create fire effect particles
+                createParticles(proj.x, proj.y, '#f97316', 5, 0.5, 4);
+                audioManager.playHit();
+                
+                // Break iron block after required hits
+                if (state.ironBlockHits[ironHitKey] >= proj.ironHitsNeeded) {
+                  createBlockDebris(b.x, b.y, b.color, b.width, b.height);
+                  state.blocks.splice(bIdx, 1);
+                  state.score += 10; // Extra points for breaking iron
+                  setUiState(s => ({ ...s, score: state.score }));
+                  createParticles(b.x + b.width/2, b.y + b.height/2, '#f97316', 20, 1.0, 8);
+                  delete state.ironBlockHits[ironHitKey];
+                  hit = true;
+                }
+              } else {
+                // Iron block hit effect - just bounce off (normal weapons)
+                createParticles(proj.x, proj.y, '#525252', 3, 0.3, 3);
+                audioManager.playHit();
+              }
             }
 
             if (b.hp <= 0 && b.type !== 'IRON') {
@@ -2010,13 +2058,45 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     ctx.shadowBlur = 15;
     ctx.shadowColor = paddleColor;
     
-    // Draw Guns for ALL skins
-    // Gun Color matches paddle but darker or metallic
-    ctx.fillStyle = '#334155'; // Dark Slate for gun body
+    // Draw Guns for ALL skins - based on weapon skin
+    const weaponSkinId = saveData.equipped.weaponSkin || 'default';
+    let gunColor = '#334155'; // Default Dark Slate
+    let gunGlow = false;
+    
+    // Weapon skin colors and effects
+    if (weaponSkinId.includes('fire')) {
+      gunColor = '#f97316'; // Orange
+      gunGlow = true;
+    } else if (weaponSkinId.includes('plasma')) {
+      gunColor = '#a855f7'; // Purple
+      gunGlow = true;
+    } else if (weaponSkinId.includes('ice')) {
+      gunColor = '#06b6d4'; // Cyan
+      gunGlow = true;
+    } else if (weaponSkinId.includes('toxic')) {
+      gunColor = '#84cc16'; // Lime
+      gunGlow = true;
+    } else if (weaponSkinId.includes('ghost')) {
+      gunColor = '#94a3b8'; // Slate
+      gunGlow = true;
+    } else if (weaponSkinId.includes('cristal')) {
+      gunColor = '#e0e0e0'; // Crystal
+      gunGlow = true;
+    } else if (weaponSkinId.includes('skull')) {
+      gunColor = '#1a1a1a'; // Dark
+      gunGlow = true;
+    }
+    
+    ctx.fillStyle = gunColor;
+    if (gunGlow) {
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = gunColor;
+    }
     // Left Gun
     ctx.fillRect(pX - 4, pY - 8, 8, pHeight + 8);
     // Right Gun
     ctx.fillRect(pX + pWidth - 4, pY - 8, 8, pHeight + 8);
+    ctx.shadowBlur = 0;
     
     // Draw Paddle Body - Use image if available, otherwise fallback to color
     if (paddleImage && paddleImage.complete && paddleImage.naturalWidth > 0) {

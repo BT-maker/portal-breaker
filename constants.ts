@@ -28,6 +28,16 @@ export const SKINS = {
     ICE: '#06b6d4', // Cyan
     TOXIC: '#84cc16', // Lime
     GHOST: '#94a3b8', // Slate
+  },
+  WEAPON: {
+    DEFAULT: '#fbbf24', // Yellow
+    FIRE: '#f97316', // Orange - Can break iron blocks in 5 hits
+    PLASMA: '#a855f7', // Purple
+    ICE: '#06b6d4', // Cyan
+    TOXIC: '#84cc16', // Lime
+    GHOST: '#94a3b8', // Slate
+    CRISTAL: '#e0e0e0', // Crystal
+    SKULL: '#1a1a1a', // Skull
   }
 };
 
@@ -78,6 +88,15 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'skin_ball_ghost', name: 'Hayalet Küre', type: 'SKIN_BALL', price: 750, description: 'Yarı saydam ruhani iz.', value: SKINS.BALL.GHOST },
   { id: 'skin_ball_cristal', name: 'Kristal Top', type: 'SKIN_BALL', price: 1100, description: 'Parlayan kristal top.', value: 'cristal' },
   { id: 'skin_ball_skull', name: 'Kurukafa Top', type: 'SKIN_BALL', price: 1200, description: 'Kuru kafa efektli top.', value: 'skull' },
+  
+  // Weapon Skins
+  { id: 'skin_weapon_fire', name: 'Alev Silahı', type: 'SKIN_WEAPON', price: 1500, description: 'Demir blokları 5 vuruşta kırabilir.', value: SKINS.WEAPON.FIRE },
+  { id: 'skin_weapon_plasma', name: 'Plazma Silahı', type: 'SKIN_WEAPON', price: 1200, description: 'Enerji dalgaları yayar.', value: SKINS.WEAPON.PLASMA },
+  { id: 'skin_weapon_ice', name: 'Buz Silahı', type: 'SKIN_WEAPON', price: 1000, description: 'Buz parçacıkları bırakır.', value: SKINS.WEAPON.ICE },
+  { id: 'skin_weapon_toxic', name: 'Asit Silahı', type: 'SKIN_WEAPON', price: 1300, description: 'Eriyen asit izi bırakır.', value: SKINS.WEAPON.TOXIC },
+  { id: 'skin_weapon_ghost', name: 'Hayalet Silahı', type: 'SKIN_WEAPON', price: 1400, description: 'Yarı saydam ruhani iz.', value: SKINS.WEAPON.GHOST },
+  { id: 'skin_weapon_cristal', name: 'Kristal Silahı', type: 'SKIN_WEAPON', price: 1600, description: 'Parlayan kristal efektler.', value: SKINS.WEAPON.CRISTAL },
+  { id: 'skin_weapon_skull', name: 'Kurukafa Silahı', type: 'SKIN_WEAPON', price: 1800, description: 'Kuru kafa efektli silah.', value: SKINS.WEAPON.SKULL },
 ];
 
 export const ACHIEVEMENTS: Achievement[] = [
@@ -95,6 +114,7 @@ export const DEFAULT_SAVE_DATA = {
   inventory: {
     paddleSkins: ['default'],
     ballSkins: ['default'],
+    weaponSkins: ['default'],
     upgrades: {
       paddleWidth: 0,
       ballSpeed: 0,
@@ -103,6 +123,7 @@ export const DEFAULT_SAVE_DATA = {
   equipped: {
     paddleSkin: 'default',
     ballSkin: 'default',
+    weaponSkin: 'default',
   },
   settings: {
     musicVolume: 0.5,

@@ -7,15 +7,16 @@ interface ShopSceneProps {
   changeScene: (scene: Scene) => void;
   saveData: SaveData;
   buyItem: (itemId: string, cost: number) => void;
-  equipItem: (type: 'paddle' | 'ball', skinId: string) => void;
+  equipItem: (type: 'paddle' | 'ball' | 'weapon', skinId: string) => void;
 }
 
 export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buyItem, equipItem }) => {
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'paddle' | 'ball' | 'upgrade'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'paddle' | 'ball' | 'weapon' | 'upgrade'>('all');
   
   const isOwned = (id: string) => {
     return saveData.inventory.paddleSkins.includes(id) || 
            saveData.inventory.ballSkins.includes(id) ||
+           (saveData.inventory.weaponSkins && saveData.inventory.weaponSkins.includes(id)) ||
            (id.startsWith('upgrade') && checkUpgradeLevel(id)); 
   };
 
@@ -28,7 +29,7 @@ export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buy
   };
 
   const isEquipped = (id: string) => {
-    return saveData.equipped.paddleSkin === id || saveData.equipped.ballSkin === id;
+    return saveData.equipped.paddleSkin === id || saveData.equipped.ballSkin === id || (saveData.equipped.weaponSkin && saveData.equipped.weaponSkin === id);
   };
 
   const isLocked = (item: ShopItem) => {
@@ -41,6 +42,7 @@ export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buy
     if (selectedCategory === 'all') return SHOP_ITEMS;
     if (selectedCategory === 'paddle') return SHOP_ITEMS.filter(item => item.type === 'SKIN_PADDLE');
     if (selectedCategory === 'ball') return SHOP_ITEMS.filter(item => item.type === 'SKIN_BALL');
+    if (selectedCategory === 'weapon') return SHOP_ITEMS.filter(item => item.type === 'SKIN_WEAPON');
     if (selectedCategory === 'upgrade') return SHOP_ITEMS.filter(item => item.type === 'UPGRADE_WIDTH' || item.type === 'UPGRADE_SPEED');
     return SHOP_ITEMS;
   };
@@ -132,6 +134,16 @@ export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buy
             Ball Skins
           </button>
           <button
+            onClick={() => setSelectedCategory('weapon')}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold text-sm md:text-base transition-all duration-300 ${
+              selectedCategory === 'weapon'
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg shadow-teal-500/50 scale-105'
+                : 'bg-teal-900/50 text-teal-200 hover:bg-teal-800/50 hover:scale-105'
+            }`}
+          >
+            Silah Skins
+          </button>
+          <button
             onClick={() => setSelectedCategory('upgrade')}
             className={`px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold text-sm md:text-base transition-all duration-300 ${
               selectedCategory === 'upgrade'
@@ -160,7 +172,12 @@ export const ShopScene: React.FC<ShopSceneProps> = ({ changeScene, saveData, buy
                 locked={isLocked(item)}
                 canAfford={saveData.currency >= item.price}
                 onBuy={() => buyItem(item.id, item.price)}
-                onEquip={() => equipItem(item.type === 'SKIN_PADDLE' ? 'paddle' : 'ball', item.id)}
+                onEquip={() => equipItem(
+                  item.type === 'SKIN_PADDLE' ? 'paddle' : 
+                  item.type === 'SKIN_BALL' ? 'ball' : 
+                  item.type === 'SKIN_WEAPON' ? 'weapon' : 'paddle', 
+                  item.id
+                )}
               />
             </div>
           ))}
@@ -199,6 +216,7 @@ const ShopCard: React.FC<ShopCardProps> = ({
 
   const isSkin = item.type.includes('SKIN');
   const isPaddle = item.type === 'SKIN_PADDLE';
+  const isWeapon = item.type === 'SKIN_WEAPON';
   
   // Load preview image for skins
   useEffect(() => {
@@ -214,12 +232,16 @@ const ShopCard: React.FC<ShopCardProps> = ({
       } else if (item.id.startsWith('skin_ball_')) {
         const key = item.id.replace('skin_ball_', '');
         return BALL_IMAGES[key] || null;
+      } else if (item.id.startsWith('skin_weapon_')) {
+        // Weapon skins don't have images, use color preview
+        return null;
       }
       return null;
     };
 
     const imagePath = getImagePath();
     if (!imagePath) {
+      // For weapon skins, we don't have images, use color preview
       setPreviewImage(null);
       return;
     }
@@ -328,7 +350,7 @@ const ShopCard: React.FC<ShopCardProps> = ({
                     </div>
                   )}
                 </div>
-              ) : item.value && typeof item.value === 'string' && item.value.startsWith('#') ? (
+              ) : (item.value && typeof item.value === 'string' && item.value.startsWith('#')) || isWeapon ? (
                 // Enhanced fallback to color preview
                 isPaddle ? (
                   <div 
@@ -338,6 +360,60 @@ const ShopCard: React.FC<ShopCardProps> = ({
                       boxShadow: `0 0 20px ${item.value}80, 0 0 40px ${item.value}40`,
                     }}
                   ></div>
+                ) : isWeapon ? (
+                  // Weapon preview - gun shape
+                  <div className="relative z-10 flex items-center justify-center">
+                    <div className="relative">
+                      {/* Get weapon color */}
+                      {(() => {
+                        const weaponColor = item.id.includes('fire') ? '#f97316' :
+                                          item.id.includes('plasma') ? '#a855f7' :
+                                          item.id.includes('ice') ? '#06b6d4' :
+                                          item.id.includes('toxic') ? '#84cc16' :
+                                          item.id.includes('ghost') ? '#94a3b8' :
+                                          item.id.includes('cristal') ? '#e0e0e0' :
+                                          item.id.includes('skull') ? '#1a1a1a' : '#fbbf24';
+                        return (
+                          <>
+                            {/* Gun body */}
+                            <div 
+                              className="w-24 md:w-32 h-6 md:h-8 rounded-lg shadow-2xl transition-all duration-500 group-hover:scale-125 group-hover:rotate-3 relative"
+                              style={{
+                                backgroundColor: weaponColor,
+                                boxShadow: `0 0 25px ${weaponColor}80, 0 0 50px ${weaponColor}40`,
+                              }}
+                            >
+                              {/* Gun barrel */}
+                              <div 
+                                className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full"
+                                style={{
+                                  backgroundColor: weaponColor,
+                                  boxShadow: `0 0 10px ${weaponColor}80`,
+                                }}
+                              ></div>
+                              {/* Gun grip */}
+                              <div 
+                                className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-2 rounded-sm"
+                                style={{
+                                  backgroundColor: weaponColor,
+                                  opacity: 0.7,
+                                }}
+                              ></div>
+                            </div>
+                            {/* Glow effect */}
+                            {!locked && (
+                              <div 
+                                className="absolute inset-0 rounded-lg blur-xl opacity-50 group-hover:opacity-75 transition-all"
+                                style={{
+                                  backgroundColor: weaponColor,
+                                }}
+                              ></div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 ) : (
                   <div className="relative z-10">
                     <div 

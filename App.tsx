@@ -32,6 +32,14 @@ const App: React.FC = () => {
         if (!parsed.stats) {
           parsed.stats = DEFAULT_SAVE_DATA.stats;
         }
+        // Initialize weaponSkins if not present
+        if (!parsed.inventory?.weaponSkins) {
+          parsed.inventory = { ...parsed.inventory, weaponSkins: ['default'] };
+        }
+        // Initialize weaponSkin in equipped if not present
+        if (!parsed.equipped?.weaponSkin) {
+          parsed.equipped = { ...parsed.equipped, weaponSkin: 'default' };
+        }
         return { ...DEFAULT_SAVE_DATA, ...parsed };
       } catch (e) {
         console.error("Save file corrupted");
@@ -261,8 +269,14 @@ const App: React.FC = () => {
       const newInventory = { ...prev.inventory };
       const newUpgrades = { ...prev.inventory.upgrades };
 
+      // Initialize weaponSkins if it doesn't exist
+      if (!newInventory.weaponSkins) {
+        newInventory.weaponSkins = ['default'];
+      }
+
       if (itemId.startsWith('skin_paddle')) newInventory.paddleSkins.push(itemId);
       if (itemId.startsWith('skin_ball')) newInventory.ballSkins.push(itemId);
+      if (itemId.startsWith('skin_weapon')) newInventory.weaponSkins.push(itemId);
       
       if (itemId === 'upgrade_width_1') newUpgrades.paddleWidth = 1;
       if (itemId === 'upgrade_width_2') newUpgrades.paddleWidth = 2;
@@ -279,12 +293,12 @@ const App: React.FC = () => {
     });
   };
 
-  const handleEquipItem = (type: 'paddle' | 'ball', skinId: string) => {
+  const handleEquipItem = (type: 'paddle' | 'ball' | 'weapon', skinId: string) => {
     setSaveData(prev => ({
       ...prev,
       equipped: {
         ...prev.equipped,
-        [type === 'paddle' ? 'paddleSkin' : 'ballSkin']: skinId
+        [type === 'paddle' ? 'paddleSkin' : type === 'ball' ? 'ballSkin' : 'weaponSkin']: skinId
       }
     }));
   };

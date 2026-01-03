@@ -85,6 +85,9 @@ export interface Projectile {
   particles?: Particle[]; // Mermi etrafındaki partiküller
   glowIntensity?: number; // Glow şiddeti (0-1)
   effectType?: 'normal' | 'rapidfire' | 'explosive' | 'laser'; // Efekt tipi
+  canBreakIron?: boolean; // Can break iron blocks
+  ironHitsNeeded?: number; // Hits needed to break iron (for fire weapon)
+  ironHits?: number; // Current hits on iron block
 }
 
 export interface PowerUp {
@@ -113,6 +116,7 @@ export interface SaveData {
   inventory: {
     paddleSkins: string[];
     ballSkins: string[];
+    weaponSkins: string[];
     upgrades: {
       paddleWidth: number; // Level 0-3
       ballSpeed: number; // Level 0-3
@@ -121,6 +125,7 @@ export interface SaveData {
   equipped: {
     paddleSkin: string;
     ballSkin: string;
+    weaponSkin: string;
   };
   settings: {
     musicVolume: number;
