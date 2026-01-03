@@ -1025,8 +1025,23 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     generateEffects(deltaTime); 
     draw();
 
-    const breakableBlocks = state.blocks.filter(b => b.type !== 'PORTAL' && b.type !== 'IRON');
-    if (breakableBlocks.length === 0) {
+    // Check for level completion
+    // For boss levels: check if boss is defeated (hp <= 0)
+    // For normal levels: check if all breakable blocks are destroyed
+    const isBossLevel = levelNum % 10 === 0 && levelNum > 0;
+    const bossBlock = state.blocks.find(b => b.type === 'BOSS');
+    
+    let levelComplete = false;
+    if (isBossLevel && bossBlock) {
+      // Boss level: boss must be defeated (hp <= 0)
+      levelComplete = bossBlock.hp <= 0;
+    } else {
+      // Normal level: all breakable blocks must be destroyed
+      const breakableBlocks = state.blocks.filter(b => b.type !== 'PORTAL' && b.type !== 'IRON');
+      levelComplete = breakableBlocks.length === 0;
+    }
+    
+    if (levelComplete) {
       audioManager.playLevelComplete();
       
       // Check achievements
