@@ -3,8 +3,9 @@ import { ShopItem, Achievement } from "./types";
 export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 600;
 export const PADDLE_HEIGHT = 20;
-export const BALL_RADIUS = 8;
+export const BALL_RADIUS = 16; // 2x boyut (8 -> 16)
 export const BASE_BALL_SPEED = 5;
+export const MIN_BALL_SPEED = 4.0; // Minimum top hızı (oyun akışını korumak için)
 export const BLOCK_PADDING = 5;
 export const PORTAL_RADIUS = 25;
 
@@ -40,6 +41,8 @@ export const PADDLE_IMAGES: Record<string, string> = {
   gold: `${BASE_PATH}assets/paddles/gold.png`,
   ice: `${BASE_PATH}assets/paddles/ice.png`,
   void: `${BASE_PATH}assets/paddles/void.png`,
+  crystal: `${BASE_PATH}assets/paddles/cristal.png`,
+  kilic: `${BASE_PATH}assets/korsan/korsan-paddle.png`,
 };
 
 export const BALL_IMAGES: Record<string, string> = {
@@ -49,6 +52,8 @@ export const BALL_IMAGES: Record<string, string> = {
   ice: `${BASE_PATH}assets/balls/ice.png`,
   toxic: `${BASE_PATH}assets/balls/toxic.png`,
   ghost: `${BASE_PATH}assets/balls/ghost.png`,
+  cristal: `${BASE_PATH}assets/balls/cristal.png`,
+  skull: `${BASE_PATH}assets/balls/skull.png`,
 };
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -59,15 +64,11 @@ export const SHOP_ITEMS: ShopItem[] = [
 
   // Paddle Skins
   { id: 'skin_paddle_crimson', name: 'Kızıl Muhafız', type: 'SKIN_PADDLE', price: 300, description: 'Yoğun ateş efektli paddle.', value: SKINS.PADDLE.CRIMSON },
-  { id: 'skin_paddle_neon', name: 'Siber Neon', type: 'SKIN_PADDLE', price: 600, description: 'Dijital matris efektli paddle.', value: SKINS.PADDLE.NEON },
   { id: 'skin_paddle_gold', name: 'Altın Kral', type: 'SKIN_PADDLE', price: 1000, description: 'Saf altın ve ışıltı saçar.', value: SKINS.PADDLE.GOLD },
   { id: 'skin_paddle_ice', name: 'Buzul Devi', type: 'SKIN_PADDLE', price: 800, description: 'Soğuk buhar ve kar taneleri.', value: SKINS.PADDLE.ICE },
   { id: 'skin_paddle_void', name: 'Karanlık Madde', type: 'SKIN_PADDLE', price: 1500, description: 'Evrenin derinliklerinden gelen güç.', value: SKINS.PADDLE.VOID },
-  { id: 'skin_paddle_rainbow', name: 'Gökkuşağı', type: 'SKIN_PADDLE', price: 2000, description: 'Renkli ışık saçan paddle.', value: '#ff0080' },
-  { id: 'skin_paddle_cyber', name: 'Siber Paddle', type: 'SKIN_PADDLE', price: 1800, description: 'Fütüristik neon efektler.', value: '#00ffff' },
-  { id: 'skin_paddle_flame', name: 'Alev Paddle', type: 'SKIN_PADDLE', price: 1200, description: 'Yanan alev efektleri.', value: '#ff4500' },
   { id: 'skin_paddle_crystal', name: 'Kristal Paddle', type: 'SKIN_PADDLE', price: 1600, description: 'Parlayan kristal yüzey.', value: '#e0e0e0' },
-  { id: 'skin_paddle_shadow', name: 'Gölge Paddle', type: 'SKIN_PADDLE', price: 2200, description: 'Karanlık gölge efektleri.', value: '#1a1a1a' },
+  { id: 'skin_paddle_kilic', name: 'Kılıç Paddle', type: 'SKIN_PADDLE', price: 2500, description: '10. seviye boss\'una %50 daha fazla hasar verir.', value: 'kilic' },
   
   // Ball Skins
   { id: 'skin_ball_fire', name: 'Alev Topu', type: 'SKIN_BALL', price: 400, description: 'Arkasında duman bırakır.', value: SKINS.BALL.FIRE },
@@ -75,11 +76,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'skin_ball_ice', name: 'Kristal Top', type: 'SKIN_BALL', price: 500, description: 'Buz parçacıkları bırakır.', value: SKINS.BALL.ICE },
   { id: 'skin_ball_toxic', name: 'Asit Topu', type: 'SKIN_BALL', price: 600, description: 'Eriyen asit izi bırakır.', value: SKINS.BALL.TOXIC },
   { id: 'skin_ball_ghost', name: 'Hayalet Küre', type: 'SKIN_BALL', price: 750, description: 'Yarı saydam ruhani iz.', value: SKINS.BALL.GHOST },
-  { id: 'skin_ball_rainbow', name: 'Gökkuşağı Top', type: 'SKIN_BALL', price: 1000, description: 'Renk değiştiren top.', value: '#ff0080' },
-  { id: 'skin_ball_cyber', name: 'Siber Top', type: 'SKIN_BALL', price: 900, description: 'Dijital parçacıklar.', value: '#00ffff' },
-  { id: 'skin_ball_flame', name: 'Alev Top', type: 'SKIN_BALL', price: 800, description: 'Yanan alev izi.', value: '#ff4500' },
-  { id: 'skin_ball_crystal', name: 'Kristal Küre', type: 'SKIN_BALL', price: 1100, description: 'Parlayan kristal top.', value: '#e0e0e0' },
-  { id: 'skin_ball_shadow', name: 'Gölge Top', type: 'SKIN_BALL', price: 1200, description: 'Karanlık gölge izi.', value: '#1a1a1a' },
+  { id: 'skin_ball_cristal', name: 'Kristal Top', type: 'SKIN_BALL', price: 1100, description: 'Parlayan kristal top.', value: 'cristal' },
+  { id: 'skin_ball_skull', name: 'Kurukafa Top', type: 'SKIN_BALL', price: 1200, description: 'Kuru kafa efektli top.', value: 'skull' },
 ];
 
 export const ACHIEVEMENTS: Achievement[] = [

@@ -49,8 +49,9 @@ export function generateLevel(levelNum: number): LevelData {
   // New block type chances (only appear after level 5)
   const iceChance = levelNum > 5 ? 0.03 : 0;
   const bouncyChance = levelNum > 10 ? 0.02 : 0;
-  // Iron blocks start appearing from level 11, gradually increasing
-  const ironChance = levelNum >= 11 ? Math.min(0.15, 0.02 + ((levelNum - 11) * 0.003)) : 0;
+  // Iron blocks: strategic placement instead of random
+  // Calculate max iron blocks based on level (more strategic, less random)
+  const maxIronBlocks = levelNum >= 11 ? Math.min(8, Math.floor((levelNum - 10) / 5) + 2) : 0;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -87,17 +88,40 @@ export function generateLevel(levelNum: number): LevelData {
         // Determine block type based on level and chance
         let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' | 'IRON' = 'NORMAL';
         
+        // Strategic iron block placement: place on edges/corners, not randomly
+        let isIronBlock = false;
+        if (maxIronBlocks > 0) {
+          // Count existing iron blocks
+          const existingIronCount = blocks.filter(b => b.type === 'IRON').length;
+          
+          // Strategic placement: edges, corners, or strategic positions
+          const isEdge = (r === 0 || r === rows - 1 || c === 0 || c === cols - 1);
+          const isCorner = (r === 0 || r === rows - 1) && (c === 0 || c === cols - 1);
+          const isStrategicRow = r % Math.max(3, Math.floor(rows / 4)) === 0; // Every few rows
+          
+          // Place iron blocks strategically: prefer edges, corners, or strategic rows
+          if (existingIronCount < maxIronBlocks) {
+            if (isCorner && Math.random() < 0.3) {
+              isIronBlock = true;
+            } else if (isEdge && Math.random() < 0.15) {
+              isIronBlock = true;
+            } else if (isStrategicRow && Math.random() < 0.1) {
+              isIronBlock = true;
+            }
+          }
+        }
+        
         const rand = Math.random();
         
         // Other block types - Iron blocks are checked first (they're unbreakable)
-        if (rand < ironChance) {
+        if (isIronBlock) {
           type = 'IRON';
           hp = 9999; // Unbreakable
-        } else if (rand < ironChance + bouncyChance) {
+        } else if (rand < bouncyChance) {
           type = 'BOUNCY';
-        } else if (rand < ironChance + bouncyChance + iceChance) {
+        } else if (rand < bouncyChance + iceChance) {
           type = 'ICE';
-        } else if (rand < ironChance + bouncyChance + iceChance + explosiveChance) {
+        } else if (rand < bouncyChance + iceChance + explosiveChance) {
           type = 'EXPLOSIVE';
         } else if (hp >= 3 || Math.random() < hardBlockChance) {
           type = 'HARD';
@@ -180,7 +204,8 @@ export function generateBossLevel(levelNum: number): LevelData {
   const bossHeight = blockHeight * 2 + BLOCK_PADDING * 1;
   const bossX = GAME_WIDTH / 2 - bossWidth / 2;
   const bossY = 80;
-  const bossHp = 20 + (bossLevel / 10) * 10; // 20, 30, 40, etc.
+  // Boss HP: Level 10 = 100, then increases by 20 per boss level
+  const bossHp = bossLevel === 10 ? 100 : 100 + ((bossLevel / 10) - 1) * 20;
   
   // Calculate which grid cells boss occupies - with margin to ensure no blocks behind
   const bossLeftCol = Math.max(0, Math.floor((bossX - startX - blockWidth) / (blockWidth + BLOCK_PADDING)));
@@ -193,8 +218,8 @@ export function generateBossLevel(levelNum: number): LevelData {
   const explosiveChance = 0.02;
   const iceChance = levelNum > 5 ? 0.03 : 0;
   const bouncyChance = levelNum > 10 ? 0.02 : 0;
-  // Iron blocks start appearing from level 11, gradually increasing
-  const ironChance = levelNum >= 11 ? Math.min(0.15, 0.02 + ((levelNum - 11) * 0.003)) : 0;
+  // Iron blocks: strategic placement instead of random
+  const maxIronBlocksBoss = levelNum >= 11 ? Math.min(6, Math.floor((levelNum - 10) / 5) + 1) : 0;
   
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -220,16 +245,32 @@ export function generateBossLevel(levelNum: number): LevelData {
       let hp = Math.max(1, baseHp);
       let type: 'NORMAL' | 'HARD' | 'EXPLOSIVE' | 'PORTAL' | 'ICE' | 'BOUNCY' | 'IRON' = 'NORMAL';
       
+      // Strategic iron block placement for boss levels
+      let isIronBlock = false;
+      if (maxIronBlocksBoss > 0) {
+        const existingIronCount = blocks.filter(b => b.type === 'IRON').length;
+        const isEdge = (r === 0 || r === rows - 1 || c === 0 || c === cols - 1);
+        const isCorner = (r === 0 || r === rows - 1) && (c === 0 || c === cols - 1);
+        
+        if (existingIronCount < maxIronBlocksBoss) {
+          if (isCorner && Math.random() < 0.3) {
+            isIronBlock = true;
+          } else if (isEdge && Math.random() < 0.15) {
+            isIronBlock = true;
+          }
+        }
+      }
+      
       const rand = Math.random();
       // Iron blocks are checked first (they're unbreakable)
-      if (rand < ironChance) {
+      if (isIronBlock) {
         type = 'IRON';
         hp = 9999; // Unbreakable
-      } else if (rand < ironChance + bouncyChance) {
+      } else if (rand < bouncyChance) {
         type = 'BOUNCY';
-      } else if (rand < ironChance + bouncyChance + iceChance) {
+      } else if (rand < bouncyChance + iceChance) {
         type = 'ICE';
-      } else if (rand < ironChance + bouncyChance + iceChance + explosiveChance) {
+      } else if (rand < bouncyChance + iceChance + explosiveChance) {
         type = 'EXPLOSIVE';
       } else if (hp >= 3 || Math.random() < hardBlockChance) {
         type = 'HARD';

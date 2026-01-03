@@ -3,7 +3,7 @@ import { Scene, SaveData, LevelData, Vector2, Portal, Block, Particle, BallEntit
 import { generateLevel, generateBossLevel } from '../utils/levelGenerator.ts';
 import { Button } from '../components/Button';
 import { audioManager } from '../utils/audio';
-import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, PORTAL_RADIUS, SKINS, PADDLE_IMAGES, BALL_IMAGES, ACHIEVEMENTS } from '../constants';
+import { GAME_HEIGHT, GAME_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, INITIAL_LIVES, PORTAL_RADIUS, SKINS, PADDLE_IMAGES, BALL_IMAGES, ACHIEVEMENTS, MIN_BALL_SPEED } from '../constants';
 
 interface GameSceneProps {
   levelNum: number;
@@ -113,11 +113,17 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const skinId = saveData.equipped.paddleSkin;
     let imageKey = 'default';
     
+    // Kılıç paddle uses korsan paddle image (even if not complete yet)
+    if (skinId === 'skin_paddle_kilic' && imageCacheRef.current.korsanPaddle) {
+      return imageCacheRef.current.korsanPaddle;
+    }
+    
     if (skinId.includes('crimson')) imageKey = 'crimson';
     else if (skinId.includes('neon')) imageKey = 'neon';
     else if (skinId.includes('gold')) imageKey = 'gold';
     else if (skinId.includes('ice')) imageKey = 'ice';
     else if (skinId.includes('void')) imageKey = 'void';
+    else if (skinId.includes('crystal')) imageKey = 'crystal';
     
     return imageCacheRef.current.paddles.get(imageKey) || null;
   };
@@ -132,6 +138,8 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     else if (skinId.includes('ice')) imageKey = 'ice';
     else if (skinId.includes('toxic')) imageKey = 'toxic';
     else if (skinId.includes('ghost')) imageKey = 'ghost';
+    else if (skinId.includes('cristal')) imageKey = 'cristal';
+    else if (skinId.includes('skull')) imageKey = 'skull';
     
     return imageCacheRef.current.balls.get(imageKey) || null;
   };
@@ -1182,7 +1190,13 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
             
             // Hit! (Iron blocks are unbreakable)
             if (b.type !== 'IRON') {
-              b.hp--;
+              // Boss takes 1.5x damage from projectiles if using kilic paddle on level 10
+              if (b.type === 'BOSS' && levelNum === 10 && saveData.equipped.paddleSkin === 'skin_paddle_kilic') {
+                const damage = Math.floor(1 * 1.5);
+                b.hp -= damage;
+              } else {
+                b.hp--;
+              }
               createParticles(proj.x, proj.y, proj.color, 3, 0.3, 3);
             } else {
               // Iron block hit effect - just bounce off
@@ -1341,6 +1355,16 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
         
         ball.x += ball.vx * speedMultiplier * deltaTime * 60; // Scale to 60 FPS
         ball.y += ball.vy * speedMultiplier * deltaTime * 60; // Scale to 60 FPS
+        
+        // Minimum hız kontrolü - topun çok yavaşlamasını engelle
+        const currentSpeed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        if (currentSpeed > 0 && currentSpeed < MIN_BALL_SPEED) {
+          // Hızı normalize et ve minimum hıza çıkar
+          const normalizedVx = ball.vx / currentSpeed;
+          const normalizedVy = ball.vy / currentSpeed;
+          ball.vx = normalizedVx * MIN_BALL_SPEED;
+          ball.vy = normalizedVy * MIN_BALL_SPEED;
+        }
 
         // Walls
         if (ball.x < BALL_RADIUS) {
@@ -1405,8 +1429,10 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                     
                     // --- BOSS BLOCK LOGIC ---
                     if (b.type === 'BOSS') {
-                      // Boss takes 1 damage per hit
-                      b.hp--;
+                      // Boss takes 1 damage per hit, 1.5x if using kilic paddle on level 10
+                      const damageMultiplier = (levelNum === 10 && saveData.equipped.paddleSkin === 'skin_paddle_kilic') ? 1.5 : 1.0;
+                      const damage = Math.floor(1 * damageMultiplier);
+                      b.hp -= damage;
                       createParticles(closestX, closestY, '#dc2626', 10, 0.8, 6);
                       audioManager.playHit();
                       
@@ -1947,11 +1973,21 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const pX = state.paddleX - (pWidth - state.paddleWidth) / 2;
     const pY = (GAME_HEIGHT - 30) + (PADDLE_HEIGHT - pHeight);
 
-    // Use korsan paddle for levels 1-10, otherwise use normal paddle
+    // Use korsan paddle only if kilic paddle is equipped (optional, not forced)
     let paddleImage: HTMLImageElement | null = null;
-    if (levelNum <= 10 && imageCacheRef.current.korsanPaddle && imageCacheRef.current.korsanPaddle.complete) {
-      paddleImage = imageCacheRef.current.korsanPaddle;
+    const equippedPaddle = saveData.equipped.paddleSkin;
+    
+    // Kılıç paddle uses korsan paddle image (if equipped)
+    if (equippedPaddle === 'skin_paddle_kilic') {
+      // Try to use korsan paddle image (even if not complete yet, it might still work)
+      if (imageCacheRef.current.korsanPaddle) {
+        paddleImage = imageCacheRef.current.korsanPaddle;
+      } else {
+        // Fallback to getPaddleImage if korsan paddle not loaded yet
+        paddleImage = getPaddleImage();
+      }
     } else {
+      // Use normal paddle image based on equipped skin
       paddleImage = getPaddleImage();
     }
     const paddleColor = getPaddleColor();

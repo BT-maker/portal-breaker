@@ -306,7 +306,7 @@ const ShopCard: React.FC<ShopCardProps> = ({
                     <img 
                       src={previewImage.src} 
                       alt={item.name}
-                      className="h-12 md:h-14 w-auto max-w-[200px] object-contain transition-all duration-500 group-hover:scale-125 group-hover:rotate-3 drop-shadow-2xl"
+                      className="h-20 md:h-24 w-auto max-w-[300px] object-contain transition-all duration-500 group-hover:scale-125 group-hover:rotate-3 drop-shadow-2xl"
                       style={{ 
                         filter: locked ? 'grayscale(0.5) brightness(0.5)' : 'drop-shadow(0 0 20px rgba(20, 184, 166, 0.5))',
                       }}
