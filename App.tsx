@@ -57,6 +57,8 @@ const App: React.FC = () => {
     win: boolean;
     score: number;
     reward?: number;
+    completedLevel?: number; // Store the level that was just completed
+    nextUnlockedLevel?: number; // Store the next unlocked level
   }>({
     isOpen: false,
     win: false,
@@ -242,12 +244,18 @@ const App: React.FC = () => {
         };
       });
       
+      // Calculate next level
+      const nextLevel = selectedLevel + 1;
+      const maxLevel = 100; // Maximum level in the game
+      
       // Show modal instead of alert
       setModalState({
         isOpen: true,
         win: true,
         score,
         reward,
+        completedLevel: selectedLevel, // Store the completed level
+        nextUnlockedLevel: nextLevel <= maxLevel ? nextLevel : undefined, // Store next level if it exists
       });
     } else {
       // Show game over modal
@@ -260,7 +268,21 @@ const App: React.FC = () => {
   };
 
   const handleModalClose = () => {
+    const wasWin = modalState.win;
+    const nextUnlockedLevel = modalState.nextUnlockedLevel;
+    
     setModalState(prev => ({ ...prev, isOpen: false }));
+    
+    // If player won and there's a next level available, automatically start it
+    if (wasWin && nextUnlockedLevel !== undefined) {
+      // Double-check that the level is actually unlocked (in case state hasn't updated yet)
+      // We'll trust the nextUnlockedLevel from modal state since we just set it
+      setSelectedLevel(nextUnlockedLevel);
+      setCurrentScene(Scene.GAME);
+      return;
+    }
+    
+    // Otherwise, go back to level select
     setCurrentScene(Scene.LEVEL_SELECT);
   };
 
