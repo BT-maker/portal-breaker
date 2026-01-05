@@ -1050,15 +1050,20 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     draw();
 
     // Check for level completion
-    // For boss levels: check if boss is defeated (hp <= 0)
+    // For boss levels: check if boss is defeated (hp <= 0 or boss block removed)
     // For normal levels: check if all breakable blocks are destroyed
     const isBossLevel = levelNum % 10 === 0 && levelNum > 0;
     const bossBlock = state.blocks.find(b => b.type === 'BOSS');
     
     let levelComplete = false;
-    if (isBossLevel && bossBlock) {
-      // Boss level: boss must be defeated (hp <= 0)
-      levelComplete = bossBlock.hp <= 0;
+    if (isBossLevel) {
+      // Boss level: boss must be defeated (hp <= 0 or boss block removed)
+      // If boss block doesn't exist, it means it was defeated and removed
+      if (!bossBlock) {
+        levelComplete = true;
+      } else {
+        levelComplete = bossBlock.hp <= 0;
+      }
     } else {
       // Normal level: all breakable blocks must be destroyed
       const breakableBlocks = state.blocks.filter(b => b.type !== 'PORTAL' && b.type !== 'IRON');
@@ -1504,7 +1509,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
                         createParticles(b.x + b.width/2, b.y + b.height/2, '#dc2626', 50, 2.0, 15);
                         state.screenShake = { x: 0, y: 0, intensity: 5, duration: 20 };
                         state.screenFlash = { intensity: 0.8, color: '#dc2626', duration: 15 };
-                        audioManager.playLevelComplete();
+                        // Don't play level complete here - let gameLoop handle it to avoid double call
                         
                         // Boss gives extra reward
                         if (onGoldCollected) {
