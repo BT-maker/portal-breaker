@@ -236,6 +236,10 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     const widthUpgrade = saveData.inventory.upgrades.paddleWidth || 0;
     const newPaddleWidth = 100 * (1 + widthUpgrade * 0.1);
 
+    // Reset lives for new level
+    gameStateRef.current.lives = INITIAL_LIVES;
+    gameStateRef.current.initialLives = INITIAL_LIVES;
+    
     gameStateRef.current.blocks = levelData.blocks;
     gameStateRef.current.paddleWidth = newPaddleWidth;
     gameStateRef.current.paddleX = GAME_WIDTH / 2 - newPaddleWidth / 2;
@@ -249,7 +253,7 @@ export const GameScene: React.FC<GameSceneProps> = ({ levelNum, saveData, onGame
     
     resetBall(); 
     
-    setUiState(s => ({ ...s, started: true }));
+    setUiState(s => ({ ...s, started: true, lives: INITIAL_LIVES }));
 
     // Start background music
     audioManager.setSFXVolume(saveData.settings.sfxVolume);
